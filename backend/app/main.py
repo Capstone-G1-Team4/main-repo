@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import health
+from app.api.v1 import auth, health
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 
@@ -27,3 +27,4 @@ app.add_middleware(
 register_exception_handlers(app)
 
 app.include_router(health.router)
+app.include_router(auth.router, prefix=settings.api_v1_prefix)

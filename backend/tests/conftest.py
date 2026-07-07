@@ -1,9 +1,14 @@
-"""Shared test fixtures: in-memory SQLite database and an async HTTP test client."""
+"""Shared test fixtures: in-memory SQLite database, async test client, and auth helpers."""
 
 import os
 
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite://")
 os.environ.setdefault("JWT_SECRET", "test-secret")
+os.environ.setdefault("DEBUG", "false")
+os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("INTERNAL_API_KEY", "test-internal-key")
+os.environ.setdefault("GOOGLE_MAPS_API_KEY", "")
+os.environ.setdefault("DELIVERY_ZONE_CITIES", "Amman")
 
 from collections.abc import AsyncGenerator  # noqa: E402
 
@@ -31,3 +36,55 @@ async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest.fixture
+async def customer(client: AsyncClient) -> dict:
+    """A registered, logged-in customer: {user, headers, password}."""
+    payload = {
+        "email": "customer@test.com",
+        "password": "password123",
+        "full_name": "Test Customer",
+        "phone": "+962790000001",
+    }
+    resp = await client.post("/api/v1/auth/register", json=payload)
+    assert resp.status_code == 201, resp.text
+    user = resp.json()
+    resp = await client.post(
+        "/api/v1/auth/login", json={"email": payload["email"], "password": payload["password"]}
+    )
+    assert resp.status_code == 200, resp.text
+    tokens = resp.json()
+    return {
+        "user": user,
+        "tokens": tokens,
+        "headers": {"Authorization": f"Bearer {tokens['access_token']}"},
+        "password": payload["password"],
+    }
+
+
+@pytest.fixture
+async def admin(db: AsyncSession, client: AsyncClient) -> dict:
+    """An admin user created directly in the DB, logged in via the API."""
+    from app.core.security import hash_password
+    from app.models.user import User, UserRole
+
+    user = User(
+        email="admin@test.com",
+        hashed_password=hash_password("adminpass123"),
+        full_name="Test Admin",
+        role=UserRole.admin,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    resp = await client.post(
+        "/api/v1/auth/login", json={"email": "admin@test.com", "password": "adminpass123"}
+    )
+    assert resp.status_code == 200, resp.text
+    tokens = resp.json()
+    return {
+        "user_id": str(user.id),
+        "tokens": tokens,
+        "headers": {"Authorization": f"Bearer {tokens['access_token']}"},
+    }
