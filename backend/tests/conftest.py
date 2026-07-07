@@ -88,3 +88,22 @@ async def admin(db: AsyncSession, client: AsyncClient) -> dict:
         "tokens": tokens,
         "headers": {"Authorization": f"Bearer {tokens['access_token']}"},
     }
+
+
+@pytest.fixture
+def product_factory(client: AsyncClient, admin: dict):
+    """Async factory that creates products through the admin API."""
+    import uuid as _uuid
+
+    async def _make(**overrides) -> dict:
+        payload = {
+            "name": f"Product {_uuid.uuid4().hex[:8]}",
+            "price": "10.00",
+            "stock_quantity": 5,
+        }
+        payload.update(overrides)
+        resp = await client.post("/api/v1/products", json=payload, headers=admin["headers"])
+        assert resp.status_code == 201, resp.text
+        return resp.json()
+
+    return _make
