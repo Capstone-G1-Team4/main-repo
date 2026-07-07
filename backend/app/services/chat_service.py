@@ -3,13 +3,14 @@
 import uuid
 
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AppError, ForbiddenError, NotFoundError
 from app.models.conversation import ChatMessage, Conversation, MessageRole
 from app.models.user import User, UserRole
 from app.schemas.chat import AIChatMessage, AIChatRequest, AIToolAction, AIUserContext
+from app.schemas.common import PageParams
 from app.schemas.location import LocationOut
 from app.schemas.order import OrderCreate
 from app.services import maps_service, order_service
@@ -40,6 +41,19 @@ async def get_conversation_authorized(
     elif session_token != conversation.session_token:
         raise ForbiddenError("Invalid session token", code="conversation_forbidden")
     return conversation
+
+
+async def admin_list_conversations(
+    db: AsyncSession, params: PageParams
+) -> tuple[list[Conversation], int]:
+    total = await db.scalar(select(func.count()).select_from(Conversation)) or 0
+    stmt = (
+        select(Conversation)
+        .order_by(Conversation.created_at.desc())
+        .offset(params.offset)
+        .limit(params.size)
+    )
+    return list((await db.scalars(stmt)).all()), total
 
 
 async def list_messages(db: AsyncSession, conversation: Conversation) -> list[ChatMessage]:

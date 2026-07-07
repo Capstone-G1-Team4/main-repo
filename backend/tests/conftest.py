@@ -91,6 +91,19 @@ async def admin(db: AsyncSession, client: AsyncClient) -> dict:
 
 
 @pytest.fixture
+def stub_ai_reply(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Replace the AI client with a stub that always replies with fixed text."""
+    from app.schemas.chat import AIChatRequest, AIChatResponse
+    from app.services import chat_service
+
+    class _Stub:
+        async def chat(self, request: AIChatRequest) -> AIChatResponse:
+            return AIChatResponse(reply="stub reply")
+
+    monkeypatch.setattr(chat_service, "get_ai_client", lambda: _Stub())
+
+
+@pytest.fixture
 def product_factory(client: AsyncClient, admin: dict):
     """Async factory that creates products through the admin API."""
     import uuid as _uuid
