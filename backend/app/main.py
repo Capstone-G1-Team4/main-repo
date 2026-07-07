@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import auth, categories, health, internal, locations, orders, products
+from app.api.v1 import auth, categories, chat, health, internal, locations, orders, products
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 
@@ -34,3 +34,4 @@ app.include_router(internal.router, prefix=settings.api_v1_prefix)
 app.include_router(locations.router, prefix=settings.api_v1_prefix)
 app.include_router(orders.router, prefix=settings.api_v1_prefix)
 app.include_router(orders.admin_router, prefix=settings.api_v1_prefix)
+app.include_router(chat.router, prefix=settings.api_v1_prefix)

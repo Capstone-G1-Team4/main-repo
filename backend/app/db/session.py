@@ -8,7 +8,13 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-engine = create_async_engine(settings.database_url, echo=settings.debug, pool_pre_ping=True)
+engine = create_async_engine(
+    settings.database_url,
+    echo=settings.debug,
+    # pre-ping guards against stale pooled Postgres connections; it breaks on
+    # the shared in-memory SQLite connection used in tests
+    pool_pre_ping=not settings.database_url.startswith("sqlite"),
+)
 
 async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

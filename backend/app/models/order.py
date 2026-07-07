@@ -44,8 +44,9 @@ class Order(Base, TimestampMixin):
     delivery_location_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("delivery_locations.id")
     )
-    # FK constraint to conversations is added in the chat-phase migration.
-    conversation_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("conversations.id", name="fk_orders_conversation_id")
+    )
     notes: Mapped[str | None] = mapped_column(Text)
 
     items: Mapped[list["OrderItem"]] = relationship(
