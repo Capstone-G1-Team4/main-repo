@@ -2,133 +2,221 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  cyberPageShell,
+  cyberNavBar,
+  cyberBrandText,
+  cyberNavLink,
+  cyberNavLoginButton,
+  cyberPageHero,
+  cyberEyebrowBadge,
+  cyberEyebrowDot,
+  cyberHeroHeading,
+  cyberHeroHighlight,
+  cyberHeroSubtext,
+  cyberSectionEyebrow,
+  cyberSectionHeading,
+  cyberSectionSubheading,
+  cyberStatCard,
+  cyberStatValue,
+  cyberStatLabel,
+  cyberArchitectureNode,
+  cyberArchitectureNodeIcon,
+  cyberArchitectureConnector,
+  cyberTeamCard,
+  cyberTeamAvatarRing,
+  cyberTeamName,
+  cyberTeamRole,
+  cyberTeamBio,
+  cyberButtonPrimary,
+  cyberButtonOutline,
+} from "../../src/lib/theme";
+
+const PROJECT_STATS = [
+  { value: "2,525+", label: "Indexed Catalog Items" },
+  { value: "6", label: "Product Categories" },
+  { value: "RAG", label: "Retrieval Architecture" },
+  { value: "24/7", label: "AI Assistant Uptime" },
+];
+
+const ARCHITECTURE_LAYERS = [
+  {
+    icon: "⚡",
+    title: "FastAPI Service Layer",
+    description:
+      "A Python-based FastAPI backend exposes the chat, product, and cart endpoints consumed by this Next.js frontend.",
+  },
+  {
+    icon: "🧠",
+    title: "Agentic RAG Pipeline",
+    description:
+      "Incoming shopping questions are routed through a retrieval-augmented pipeline that grounds model responses in the real product catalog.",
+  },
+  {
+    icon: "🗂️",
+    title: "Vector Database",
+    description:
+      "Product descriptions and specs are embedded and stored in a vector index, enabling fast semantic search over the catalog.",
+  },
+  {
+    icon: "🐳",
+    title: "Docker-Orchestrated Deployment",
+    description:
+      "Every service — API, vector store, and processing jobs — runs as a containerized unit for consistent local and production environments.",
+  },
+];
+
+const TEAM_MEMBERS = [
+  {
+    name: "Dania Jarbooh",
+    role: "Front End — UI/UX & React Implementation (AI Engineering Trainee)",
+    bio: "Builds the Next.js/React application, owns the design system and UI components, and contributes to AI engineering as a trainee.",
+    avatar: "👩‍💻",
+  },
+  {
+    name: "Shahd Ala' Ghunimah",
+    role: "AI — Model Design, Prompt Engineering & Evaluation",
+    bio: "Designs the underlying model behavior, engineers prompts for the assistant, and builds out the evaluation methodology.",
+    avatar: "🧠",
+  },
+  {
+    name: "Naseem Saleh Migdadi",
+    role: "Infrastructure — CI/CD, Deployment & Environment Management",
+    bio: "Owns CI/CD pipelines, deployment automation, and keeps environments and dependencies consistent across the stack.",
+    avatar: "🛠️",
+  },
+  {
+    name: "Mousa Al-Rashdan",
+    role: "Back End — API Design & Database/Data-Flow Architecture",
+    bio: "Designs the backend APIs and the data-flow architecture connecting the catalog, database, and vector store.",
+    avatar: "🗄️",
+  },
+];
 
 export default function AboutPage() {
   const router = useRouter();
 
-  // Official Team 4 Roster from Capstone Proposal Schema
-  const teamMembers = [
-    {
-      name: "Dania Jarbooh",
-      role: "Front End & UI/UX Specialist",
-      bio: "Engineers responsive Next.js/React application scopes, UI components, and fluid chat viewport pipelines.",
-      avatar: "👩‍💻"
-    },
-    {
-      name: "Shahd Ghunimah",
-      role: "AI Engineer & Prompt Architect",
-      bio: "Manages foundational model design, advanced prompt engineering, and core evaluation methodology tracking.",
-      avatar: "🧠"
-    },
-    {
-      name: "Mousa Al-Rashdan",
-      role: "Back End & Data Systems Architect",
-      bio: "Constructs server APIs, structures product dataset schemas, and optimizes vector index storage clusters.",
-      avatar: "👨‍💻"
-    },
-    {
-      name: "Naseem Migdadi",
-      role: "Infrastructure & DevOps Engineer",
-      bio: "Controls automated CI/CD branch protection pipelines, Docker Compose orchestration layers, and deployment environments.",
-      avatar: "🛠️"
-    }
-  ];
-
   return (
-    <div className="min-h-screen w-full bg-cyber-bg font-sans text-cyber-text selection:bg-cyber-purple/30 relative pt-20">
-      
-      {/* FUTURISTIC GLOBAL NAVBAR */}
-      <nav className="fixed top-0 left-0 right-0 z-40 border-b border-cyber-panel bg-slate-950/70 backdrop-blur-md">
+    <div className={`${cyberPageShell} pt-20`}>
+      <nav className={cyberNavBar}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push("/")}>
+            <Link href="/" className="flex items-center gap-2">
               <span className="text-xl">🔮</span>
-              <span className="font-black text-sm uppercase tracking-widest bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                NextGen Core
-              </span>
-            </div>
+              <span className={cyberBrandText}>NextGen Core</span>
+            </Link>
+
             <div className="flex items-center gap-5">
-              <Link href="/" className="text-xs font-bold uppercase tracking-wider text-cyber-muted hover:text-cyber-purple transition">⬅️ Back to Home</Link>
-              <Link href="/products" className="text-xs font-bold uppercase tracking-wider text-cyber-muted hover:text-cyber-purple transition">🛍️ Explore Products</Link>
-              <Link href="/chat" className="text-xs font-bold uppercase tracking-wider text-cyber-muted hover:text-cyber-cyan transition">💬 AI Chat Agent</Link>
+              <Link href="/" className={cyberNavLink}>⬅️ Back to Home</Link>
+              <Link href="/products" className={cyberNavLink}>🛍️ Explore Products</Link>
+              <Link href="/chat" className={cyberNavLink}>💬 AI Chat Agent</Link>
+              <Link href="/login" className={cyberNavLoginButton}>
+                Login 🔑
+              </Link>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Container Workspace */}
-      <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8 relative z-10 space-y-16">
-        
-        {/* Project Vision Headline Block */}
-        <div className="text-center space-y-4 animate-fadeIn">
-         
-          <h1 className="text-3xl md:text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-cyber-purple">
-            NextGen AI Shopping Assistant
+      <div className={cyberPageHero}>
+        <div className="mx-auto max-w-3xl relative z-10">
+          <span className={cyberEyebrowBadge}>
+            <span className={cyberEyebrowDot} />
+            Capstone Project — Agentic RAG Commerce
+          </span>
+
+          <h1 className={cyberHeroHeading}>
+            About the{" "}
+            <span className={cyberHeroHighlight}>NextGen Core</span> Team
           </h1>
-          <p className="text-sm text-cyber-muted max-w-3xl mx-auto leading-relaxed">
-            E-commerce businesses frequently lose conversions to slow product discovery and frictional checkouts. 
-            Our platform solves this challenge with an intelligent **Conversational Agent powered by Retrieval-Augmented Generation (RAG)**. 
-            Customers describe their preferences in natural text, receive personalized choices verified directly against real catalog data pools, and process checkout steps automatically in a single multi-turn chat interaction.
+
+          <p className={cyberHeroSubtext}>
+            We're building an AI-powered shopping assistant that grounds every recommendation in
+            a real, retrievable product catalog — not guesswork.
           </p>
         </div>
+      </div>
 
-        {/* Technical Architecture Metric Boxes */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-slate-900/40 border border-cyber-panel p-6 rounded-2xl space-y-2 shadow-xl backdrop-blur-sm">
-            <div className="text-2xl">🧬</div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">Grounded RAG</h3>
-            <p className="text-[11px] text-cyber-muted leading-relaxed">
-              LangChain orchestration linked to dense embedding stores ensures contextual product search results completely free of generative hallucinations.
-            </p>
-          </div>
-          <div className="bg-slate-900/40 border border-cyber-panel p-6 rounded-2xl space-y-2 shadow-xl backdrop-blur-sm">
-            <div className="text-2xl">🗺️</div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">Geocoding Tools</h3>
-            <p className="text-[11px] text-cyber-muted leading-relaxed">
-              Accepts Google Maps tracking link arrays directly via chat tokens to accurately decode delivery addresses into structured data formats.
-            </p>
-          </div>
-          <div className="bg-slate-900/40 border border-cyber-panel p-6 rounded-2xl space-y-2 shadow-xl backdrop-blur-sm">
-            <div className="text-2xl">📊</div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">Target SLAs</h3>
-            <p className="text-[11px] text-cyber-muted leading-relaxed">
-              Engineered to maintain strict retrieval success rates above 85% with conversational turnaround response latencies bounded under 4 seconds.
-            </p>
-          </div>
-        </div>
-
-        {/* Development Team Roster Section */}
-        <div className="space-y-8">
-          <div className="text-center">
-            <h2 className="text-xl font-black uppercase font-mono tracking-widest bg-gradient-to-r from-cyber-purple to-cyber-cyan bg-clip-text text-transparent">
-              Development Team Core
-            </h2>
-            <p className="text-xs text-cyber-muted mt-1">AI.SPIRE Capstone Group 1 Engineers</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {teamMembers.map((member, index) => (
-              <div 
-                key={index} 
-                className="bg-slate-900/20 border border-cyber-panel p-5 rounded-2xl flex flex-col items-center text-center space-y-4 transition-all duration-300 hover:border-cyber-purple/30 hover:bg-slate-900/50 group relative overflow-hidden shadow-2xl"
-              >
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyber-purple to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
-                <div className="w-14 h-14 rounded-full bg-slate-950 border border-cyber-border flex items-center justify-center text-2xl shadow-inner select-none">
-                  {member.avatar}
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-white line-clamp-1">{member.name}</h4>
-                  <p className="text-[9px] font-mono text-cyber-purple mt-1 uppercase tracking-widest font-black leading-tight min-h-[20px]">{member.role}</p>
-                </div>
-                <p className="text-[11px] text-cyber-muted leading-relaxed pt-1 flex-1">
-                  {member.bio}
-                </p>
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8 relative z-10 space-y-20">
+        {/* Project stats */}
+        <section>
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+            {PROJECT_STATS.map((stat) => (
+              <div key={stat.label} className={cyberStatCard}>
+                <div className={cyberStatValue}>{stat.value}</div>
+                <div className={cyberStatLabel}>{stat.label}</div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
+        {/* Architecture */}
+        <section>
+          <div className="mb-10 text-center">
+            <p className={cyberSectionEyebrow}>System Design</p>
+            <h2 className={`${cyberSectionHeading} mt-2 text-2xl`}>NLP &amp; RAG Architecture</h2>
+            <p className={`${cyberSectionSubheading} mx-auto mt-3 max-w-2xl`}>
+              Every layer of the stack is purpose-built to keep the AI assistant's answers
+              accurate, fast, and traceable back to real catalog data — powered by FastAPI,
+              Python, Docker, and a dedicated vector database.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {ARCHITECTURE_LAYERS.map((layer, index) => (
+              <div key={layer.title} className={cyberArchitectureNode}>
+                <div className="flex items-start gap-4">
+                  <div className={cyberArchitectureNodeIcon}>
+                    <span className="text-lg">{layer.icon}</span>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-cyber-text tracking-tight">
+                      {layer.title}
+                    </h3>
+                    <p className="mt-2 text-xs text-cyber-muted leading-relaxed">
+                      {layer.description}
+                    </p>
+                  </div>
+                </div>
+                {index < ARCHITECTURE_LAYERS.length - 1 && (
+                  <div className={`mt-4 text-right text-xs ${cyberArchitectureConnector}`}>↓</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Meet the Architects */}
+        <section>
+          <div className="mb-10 text-center">
+            <p className={cyberSectionEyebrow}>The People Behind It</p>
+            <h2 className={`${cyberSectionHeading} mt-2 text-2xl`}>Meet the Architects</h2>
+            
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {TEAM_MEMBERS.map((member) => (
+              <div key={member.name} className={cyberTeamCard}>
+                <div className={cyberTeamAvatarRing}>{member.avatar}</div>
+                <h3 className={cyberTeamName}>{member.name}</h3>
+                <p className={cyberTeamRole}>{member.role}</p>
+                <p className={cyberTeamBio}>{member.bio}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="text-center">
+          <div className="mx-auto flex max-w-xl flex-wrap justify-center gap-4">
+            <Link href="/chat" className={cyberButtonPrimary}>
+              💬 Try the AI Assistant
+            </Link>
+            <Link href="/products" className={cyberButtonOutline}>
+              🛍️ Browse the Catalog
+            </Link>
+          </div>
+        </section>
       </div>
     </div>
   );
