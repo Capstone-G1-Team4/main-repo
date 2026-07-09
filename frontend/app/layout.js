@@ -1,4 +1,5 @@
 import "./globals.css";
+import { CartProvider } from "../src/context/CartContext";
 
 export const metadata = {
   title: "AI-Powered Smart Shopping Assistant",
@@ -8,7 +9,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="bg-gray-100 antialiased">{children}</body>
+      <body className="bg-gray-100 antialiased">
+        <CartProvider>{children}</CartProvider>
+      </body>
     </html>
   );
 }
