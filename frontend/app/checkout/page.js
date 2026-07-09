@@ -1,295 +1,382 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import rawProducts from "../../../Agentic-RAG/data/processed/products.json";
+import { useCart } from "../../src/context/CartContext";
+import { getDynamicProductImage } from "../../src/lib/productImage";
+import {
+  cyberPageShell,
+  cyberHeading,
+  cyberPanel,
+  cyberInput,
+  cyberLabel,
+  cyberButtonPrimary,
+  cyberEmptyState,
+} from "../../src/lib/theme";
+
+const TAX_RATE = 0.16;
+const SHIPPING_FEE = 15.0;
 
 /**
- * CheckoutPage - Premium Cyber-Tech Checkout & Shipping Form Component
- * Simulates secure order commitment, adaptive billing forms, and cash-on-delivery routing.
+ * Card number, expiry, and CVV are deliberately NOT tracked in React state.
+ * They live only in the DOM (via refs) for the moment they're needed to
+ * "authorize" the simulated payment, and are wiped immediately afterward.
+ * This keeps sensitive values out of component state, out of any state
+ * inspector, and out of anything that might get logged or persisted later.
  */
+function readAndClearCardFields(cardNumberRef, expiryRef, cvvRef) {
+  const snapshot = {
+    cardNumber: cardNumberRef.current?.value || "",
+    expiry: expiryRef.current?.value || "",
+    cvv: cvvRef.current?.value || "",
+  };
+
+  if (cardNumberRef.current) cardNumberRef.current.value = "";
+  if (expiryRef.current) expiryRef.current.value = "";
+  if (cvvRef.current) cvvRef.current.value = "";
+
+  return snapshot;
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
-  const [cartItems, setCartItems] = useState([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("card"); // "card" or "cod"
+  const { items, totalPrice, clearCart } = useCart();
 
-  // Form States
-  const [formData, setFormData] = useState({
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isOrderComplete, setIsOrderComplete] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const [shippingInfo, setShippingInfo] = useState({
     fullName: "",
     email: "",
     address: "",
     city: "",
     zipCode: "",
-    cardNumber: "",
-    expiry: "",
-    cvv: ""
   });
 
-  useEffect(() => {
-    // Load initial staging cart buffer items for visual aggregate mapping
-    if (rawProducts.catalog && rawProducts.catalog.length >= 2) {
-      setCartItems([
-        { ...rawProducts.catalog[0], quantity: 1 },
-        { ...rawProducts.catalog[2], quantity: 2 }
-      ]);
-    }
-  }, []);
+  const cardNumberRef = useRef(null);
+  const expiryRef = useRef(null);
+  const cvvRef = useRef(null);
 
-  // Compute financial totals loaded from state array
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingFee = subtotal > 0 ? 15.00 : 0;
-  const estimatedTax = subtotal * 0.16;
-  const totalOrderAmount = subtotal + shippingFee + estimatedTax;
+  const { subtotal, shippingFee, estimatedTax, totalOrderAmount } = useMemo(() => {
+    const computedShipping = totalPrice > 0 ? SHIPPING_FEE : 0;
+    const computedTax = totalPrice * TAX_RATE;
+    return {
+      subtotal: totalPrice,
+      shippingFee: computedShipping,
+      estimatedTax: computedTax,
+      totalOrderAmount: totalPrice + computedShipping + computedTax,
+    };
+  }, [totalPrice]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleShippingChange = (event) => {
+    const { name, value } = event.target;
+    setShippingInfo((prev) => ({ ...prev, [name]: value }));
   };
 
-  /**
-   * Secure Order Pipeline Submitter: Simulates async transaction verification
-   */
-  const handleOrderSubmit = (e) => {
-    e.preventDefault();
+  const handleOrderSubmit = (event) => {
+    event.preventDefault();
+    setFormError("");
+
+    if (items.length === 0) {
+      setFormError("Your cart is empty.");
+      return;
+    }
+
+    if (paymentMethod === "card") {
+      const cardSnapshot = readAndClearCardFields(cardNumberRef, expiryRef, cvvRef);
+      const hasAllCardFields = cardSnapshot.cardNumber && cardSnapshot.expiry && cardSnapshot.cvv;
+
+      if (!hasAllCardFields) {
+        setFormError("Enter your card number, expiry, and CVV.");
+        return;
+      }
+      // cardSnapshot is only ever held in this local variable, used to
+      // "authorize" the simulated charge below, and goes out of scope
+      // (and out of memory) as soon as this function returns. It is never
+      // written to component state.
+    }
+
     setIsProcessing(true);
 
-    // Simulate async gateway delay
     setTimeout(() => {
       setIsProcessing(false);
-      if (paymentMethod === "cod") {
-        alert("💵 Order Buffered via COD! Prepare settlement upon handshake delivery.");
-      } else {
-        alert("🔒 Gateway Secured! Token authorized successfully.");
-      }
-      router.push("/");
+      setIsOrderComplete(true);
+      clearCart();
     }, 2000);
   };
 
-  return (
-    <div className="min-h-screen bg-slate-950 font-sans text-slate-100 relative selection:bg-purple-500/30">
-      
-      {/* Background Visual Overlays */}
-      <div className="absolute top-0 left-1/3 h-96 w-96 rounded-full bg-purple-600/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-20 right-10 h-80 w-80 rounded-full bg-cyan-600/5 blur-[100px] pointer-events-none" />
+  const handleReturnHome = () => {
+    router.push("/");
+  };
 
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 relative z-10">
-        
-        {/* Header Breadcrumb Panel */}
-        <div className="mb-8 border-b border-slate-900 pb-5 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-purple-400 bg-clip-text text-transparent sm:text-3xl">
-              Secure Checkout
-            </h1>
-            <p className="text-xs text-slate-500 font-mono mt-1">Finalizing end-to-end user procurement streams.</p>
+  if (isOrderComplete) {
+    return (
+      <div className={`${cyberPageShell} flex items-center justify-center px-4`}>
+        <div className={`${cyberPanel} max-w-md w-full p-10 text-center shadow-2xl`}>
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-5 text-2xl">
+            ✅
           </div>
-          <Link href="/cart" className="text-xs font-bold uppercase tracking-wider text-purple-400 hover:text-purple-300 transition">
-            ⬅️ Back to Cart 
+          <h1 className={cyberHeading}>Order Confirmed</h1>
+          <p className="mt-3 text-xs text-cyber-muted font-mono leading-relaxed">
+            {paymentMethod === "cod"
+              ? "Your order is confirmed for cash on delivery."
+              : "Your payment was processed successfully."}
+          </p>
+          <button type="button" onClick={handleReturnHome} className={`${cyberButtonPrimary} mt-8 w-full`}>
+            Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className={`${cyberPageShell} pt-20 px-4`}>
+        <div className="mx-auto max-w-2xl py-24">
+          <div className={cyberEmptyState}>
+            <span className="text-4xl">🛒</span>
+            <p className="text-cyber-muted font-medium font-mono text-sm mt-4">
+              Your cart is empty — add something before checking out.
+            </p>
+            <Link
+              href="/products"
+              className="mt-5 inline-flex rounded-xl bg-cyber-purple px-5 py-2.5 text-xs font-bold text-white shadow-md hover:opacity-90 transition"
+            >
+              Browse Products
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cyberPageShell}>
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 relative z-10">
+        <div className="mb-8 border-b border-cyber-border pb-5 flex justify-between items-center">
+          <div>
+            <h1 className={cyberHeading}>Secure Checkout</h1>
+            <p className="text-xs text-cyber-muted font-mono mt-1">Review your order and complete payment.</p>
+          </div>
+          <Link href="/cart" className="text-xs font-bold uppercase tracking-wider text-cyber-purple hover:opacity-80 transition">
+            ⬅️ Back to Cart
           </Link>
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
-          
-          {/* LEFT COLUMN: Shipping & Payment Core Form fields (Takes 7 columns) */}
           <form onSubmit={handleOrderSubmit} className="space-y-6 lg:col-span-7">
-            
-            {/* Section A: Shipping Logistics */}
-            <div className="rounded-2xl border border-slate-900 bg-slate-900/20 p-6 backdrop-blur-sm shadow-xl">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-purple-400 border-b border-slate-900 pb-3 mb-4 font-mono">
+            <div className={`${cyberPanel} p-6 shadow-xl`}>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-cyber-purple border-b border-cyber-border pb-3 mb-4 font-mono">
                 01 / Shipping Details
               </h2>
-              
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5">Full  Name</label>
+                  <label className={cyberLabel} htmlFor="fullName">Full Name</label>
                   <input
+                    id="fullName"
                     type="text"
                     required
                     name="fullName"
-                    value={formData.fullName}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    placeholder="Dania "
+                    value={shippingInfo.fullName}
+                    onChange={handleShippingChange}
+                    className={cyberInput}
+                    placeholder="Jane Doe"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5">  Email Address </label>
+                  <label className={cyberLabel} htmlFor="email">Email Address</label>
                   <input
+                    id="email"
                     type="email"
                     required
                     name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    placeholder="dania@example.com"
+                    value={shippingInfo.email}
+                    onChange={handleShippingChange}
+                    className={cyberInput}
+                    placeholder="jane@example.com"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5">Street Address </label>
+                  <label className={cyberLabel} htmlFor="address">Street Address</label>
                   <input
+                    id="address"
                     type="text"
                     required
                     name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    placeholder="Petra St."
+                    value={shippingInfo.address}
+                    onChange={handleShippingChange}
+                    className={cyberInput}
+                    placeholder="123 Main St."
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5">City </label>
+                  <label className={cyberLabel} htmlFor="city">City</label>
                   <input
+                    id="city"
                     type="text"
                     required
                     name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    placeholder="Irbid"
+                    value={shippingInfo.city}
+                    onChange={handleShippingChange}
+                    className={cyberInput}
+                    placeholder="Amman"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5">ZIP  Code</label>
+                  <label className={cyberLabel} htmlFor="zipCode">ZIP Code</label>
                   <input
+                    id="zipCode"
                     type="text"
                     required
                     name="zipCode"
-                    value={formData.zipCode}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    placeholder="21110"
+                    value={shippingInfo.zipCode}
+                    onChange={handleShippingChange}
+                    className={cyberInput}
+                    placeholder="11942"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Section B: Financial Settlement Interface */}
-            <div className="rounded-2xl border border-slate-900 bg-slate-900/20 p-6 backdrop-blur-sm shadow-xl">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-900 pb-3 mb-4 gap-2">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-purple-400 font-mono">
-                  02 / Payment Method
-                </h2>
-                
-                {/* Toggle Switch for Payment Method */}
-                <div className="flex gap-2 bg-slate-950 p-1 rounded-xl border border-slate-850">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("card")}
-                    className={`px-3 py-1 text-[10px] font-bold uppercase rounded-lg transition-all ${paymentMethod === "card" ? "bg-purple-600 text-white shadow-md shadow-purple-600/10" : "text-slate-500 hover:text-slate-300"}`}
-                  >
-                    Card
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("cod")}
-                    className={`px-3 py-1 text-[10px] font-bold uppercase rounded-lg transition-all ${paymentMethod === "cod" ? "bg-purple-600 text-white shadow-md shadow-purple-600/10" : "text-slate-500 hover:text-slate-300"}`}
-                  >
-                    COD (Cash)
-                  </button>
-                </div>
+            <div className={`${cyberPanel} p-6 shadow-xl`}>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-cyber-purple border-b border-cyber-border pb-3 mb-4 font-mono">
+                02 / Payment Method
+              </h2>
+
+              <div className="flex gap-3 mb-5">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("card")}
+                  className={`flex-1 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-wider transition ${
+                    paymentMethod === "card"
+                      ? "bg-cyber-purple text-white"
+                      : "bg-cyber-bg border border-cyber-border text-cyber-muted hover:text-cyber-text"
+                  }`}
+                >
+                  💳 Card
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("cod")}
+                  className={`flex-1 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-wider transition ${
+                    paymentMethod === "cod"
+                      ? "bg-cyber-purple text-white"
+                      : "bg-cyber-bg border border-cyber-border text-cyber-muted hover:text-cyber-text"
+                  }`}
+                >
+                  💵 Cash on Delivery
+                </button>
               </div>
-              
-              {paymentMethod === "card" ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <div className="sm:col-span-3">
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5">Card Number </label>
-                    <input
-                      type="text"
-                      required={paymentMethod === "card"}
-                      name="cardNumber"
-                      value={formData.cardNumber}
-                      onChange={handleInputChange}
-                      className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                      placeholder="4242 •••• •••• 4242"
-                    />
-                  </div>
+
+              {paymentMethod === "card" && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5">Exp. Date (MM/YY)</label>
+                    <label className={cyberLabel} htmlFor="cardNumber">Card Number</label>
                     <input
+                      id="cardNumber"
                       type="text"
-                      required={paymentMethod === "card"}
-                      name="expiry"
-                      value={formData.expiry}
-                      onChange={handleInputChange}
-                      className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                      placeholder="12/29"
+                      inputMode="numeric"
+                      autoComplete="cc-number"
+                      maxLength={19}
+                      ref={cardNumberRef}
+                      // Intentionally uncontrolled: no `value`/`onChange` here.
+                      // This field is never written into component state.
+                      className={cyberInput}
+                      placeholder="4242 4242 4242 4242"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5">CVV </label>
+                    <label className={cyberLabel} htmlFor="expiry">Expiry (MM/YY)</label>
                     <input
+                      id="expiry"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="cc-exp"
+                      maxLength={5}
+                      ref={expiryRef}
+                      className={cyberInput}
+                      placeholder="12/28"
+                    />
+                  </div>
+                  <div>
+                    <label className={cyberLabel} htmlFor="cvv">CVV</label>
+                    <input
+                      id="cvv"
                       type="password"
-                      maxLength={3}
-                      required={paymentMethod === "card"}
-                      name="cvv"
-                      value={formData.cvv}
-                      onChange={handleInputChange}
-                      className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      inputMode="numeric"
+                      autoComplete="cc-csc"
+                      maxLength={4}
+                      ref={cvvRef}
+                      className={cyberInput}
                       placeholder="•••"
                     />
                   </div>
                 </div>
-              ) : (
-                <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-xl text-center">
-                  <p className="text-xs text-purple-300 font-medium">
-                    💵 <strong className="text-white">Cash on Delivery Active.</strong> Additional Shipping fees are included in the final total. Paymentwill be collected upon delivery.
-                  </p>
-                </div>
+              )}
+
+              {paymentMethod === "cod" && (
+                <p className="text-xs text-cyber-muted font-mono">
+                  Pay with cash when your order arrives.
+                </p>
               )}
             </div>
 
-            {/* Action Submit Trigger Button Control */}
-            <button
-              type="submit"
-              disabled={isProcessing}
-              className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 py-4 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-purple-900/30 transition hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40"
-            >
-              {isProcessing ? "Processing Secure Cryptography... ⛓️" : "PLACE ORDER"}
+            {formError && <p className="text-xs text-rose-400 font-mono">{formError}</p>}
+
+            <button type="submit" disabled={isProcessing} className={`${cyberButtonPrimary} w-full`}>
+              {isProcessing ? "Processing..." : `Place Order — $${totalOrderAmount.toFixed(2)}`}
             </button>
           </form>
 
-          {/* RIGHT COLUMN: Order Manifest Mini Summary (Takes 5 columns) */}
-          <div className="lg:col-span-5 rounded-2xl border border-slate-900 bg-slate-900/40 p-6 backdrop-blur-sm shadow-xl lg:sticky lg:top-6">
-            <h2 className="text-base font-bold text-slate-200 border-b border-slate-900 pb-3">Order Details</h2>
-            
-            {/* Inline Mini Catalog Summary Cards */}
-            <div className="mt-4 divide-y divide-slate-900/80 max-h-[220px] overflow-y-auto pr-1">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0">
-                  <img src={item.imageUrl} alt={item.name} className="h-12 w-12 rounded-lg object-cover border border-slate-800" />
+          <div className={`${cyberPanel} p-6 lg:col-span-5 shadow-xl`}>
+            <h2 className="text-base font-bold text-cyber-text border-b border-cyber-border pb-3">Order Summary</h2>
+
+            <div className="mt-5 space-y-3 max-h-72 overflow-y-auto pr-1">
+              {items.map((item) => (
+                <div key={item.id} className="flex items-center gap-3">
+                  <img
+                    src={getDynamicProductImage(item)}
+                    alt={item.name}
+                    className="h-12 w-12 rounded-lg object-cover border border-cyber-border shrink-0"
+                  />
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-bold text-slate-200 truncate">{item.name}</h4>
-                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">QTY: {item.quantity} x ${item.price.toFixed(2)}</p>
+                    <p className="text-xs font-bold text-cyber-text truncate">{item.name}</p>
+                    <p className="text-[10px] text-cyber-muted font-mono">Qty {item.quantity}</p>
                   </div>
-                  <span className="text-xs font-bold font-mono text-purple-400">${(item.price * item.quantity).toFixed(2)}</span>
+                  <span className="text-xs font-bold text-cyber-purple font-mono shrink-0">
+                    ${(item.price * item.quantity).toFixed(2)}
+                  </span>
                 </div>
               ))}
             </div>
 
-            {/* Price Calculations */}
-            <div className="mt-6 border-t border-slate-900 pt-5 space-y-3 text-xs font-medium text-slate-400 font-mono">
+            <div className="mt-5 pt-5 border-t border-cyber-border space-y-3 text-xs font-medium text-cyber-muted font-mono">
               <div className="flex justify-between">
-                <span>Subtotal </span>
-                <span className="text-slate-200">${subtotal.toFixed(2)}</span>
+                <span>Subtotal</span>
+                <span className="text-cyber-text">${subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span> Sales Tax</span>
-                <span className="text-slate-200">${estimatedTax.toFixed(2)}</span>
+                <span>Tax (16%)</span>
+                <span className="text-cyber-text">${estimatedTax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Shipping Fee</span>
-                <span className="text-slate-200">${shippingFee.toFixed(2)}</span>
+                <span className="text-cyber-text">${shippingFee.toFixed(2)}</span>
               </div>
-              <div className="pt-3.5 border-t border-slate-900 flex justify-between text-sm font-black text-slate-100 font-sans">
-                <span> Total</span>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">${totalOrderAmount.toFixed(2)}</span>
+              <div className="pt-3 border-t border-cyber-border flex justify-between text-sm font-black text-cyber-text font-sans">
+                <span>Total</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyber-purple to-cyber-cyan">
+                  ${totalOrderAmount.toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
-
         </div>
-
       </div>
     </div>
   );
