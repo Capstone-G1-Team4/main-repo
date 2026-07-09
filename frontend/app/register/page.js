@@ -3,150 +3,167 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  cyberPageShell,
+  cyberPanel,
+  cyberHeading,
+  cyberLabel,
+  cyberInput,
+  cyberButtonPrimary,
+} from "../../src/lib/theme";
 
 /**
- * RegisterPage - Premium Cyber-Tech Registration Interface
- * Simulates user node enrollment, cryptographic key confirmations, and automated account initialization.
+ * RegisterPage
+ * ------------------------------------------------------------------
+ * Account creation form. Validates password length/confirmation
+ * client-side and simulates a registration request before redirecting
+ * to /login. Replace the simulated request with a real API call once
+ * a registration endpoint is available.
  */
 export default function RegisterPage() {
   const router = useRouter();
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /**
-   * Secure Registry Submitter: Validates inputs and pushes node info to temporary runtime buffer
-   */
-  const handleRegisterSubmit = (e) => {
-    e.preventDefault();
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-    if (password !== confirmPassword) {
-      alert("❌ Cryptographic Keys mismatch! Please confirm passwords accurately.");
+  const handleRegistrationSubmit = (event) => {
+    event.preventDefault();
+    setErrorMessage("");
+
+    if (formData.password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters long.");
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setErrorMessage("Passwords do not match. Please try again.");
       return;
     }
 
     setIsSubmitting(true);
 
-    // Simulated cloud cluster registry delay handshake
+    // TODO: BACKEND INTEGRATION POINT
+    // Replace this simulated delay with a real registration request, e.g.:
+    //
+    // const response = await fetch("/api/auth/register", {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify(formData),
+    // });
     setTimeout(() => {
       setIsSubmitting(false);
-      alert("🎉 Account Registered Successfully! Node token created.");
-      router.push("/login"); // Clean redirect to authorization node
-    }, 1500);
+      router.push("/login");
+    }, 1200);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans text-slate-100 relative overflow-hidden selection:bg-purple-500/30">
-      
-      {/* Visual Ambient Blur Gradients */}
-      <div className="absolute top-[-10%] right-[-10%] h-96 w-96 rounded-full bg-purple-600/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-10%] h-96 w-96 rounded-full bg-cyan-600/10 blur-[120px] pointer-events-none" />
+    <div className={`${cyberPageShell} flex items-center justify-center overflow-hidden p-4`}>
+      {/* Ambient background glows */}
+      <div className="pointer-events-none absolute right-[-10%] top-[-10%] h-96 w-96 rounded-full bg-cyber-purple/10 blur-[120px]" />
+      <div className="pointer-events-none absolute bottom-[-10%] left-[-10%] h-96 w-96 rounded-full bg-cyber-cyan/10 blur-[120px]" />
 
-      {/* Main Glassmorphic Registry Card Frame */}
-      <div className="relative w-full max-w-md rounded-2xl border border-slate-900 bg-slate-900/30 p-8 backdrop-blur-md shadow-2xl group transition-all duration-300 hover:border-purple-500/20">
-        
-        {/* Futuristic Top Design Accent Line */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-400" />
+      <div className={`${cyberPanel} relative w-full max-w-md p-8 shadow-2xl`}>
+        <div className="absolute left-0 right-0 top-0 h-[2px] bg-gradient-to-r from-cyber-purple via-indigo-500 to-cyber-cyan" />
 
-        {/* Branding Headings Block */}
-        <div className="text-center mb-8">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)] mb-4">
-            📝
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-cyber-purple/20 bg-cyber-purple/10 text-cyber-purple">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+              />
+            </svg>
           </div>
-          <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-purple-400 bg-clip-text text-transparent">
-            Create Account
-          </h1>
-          <p className="text-xs text-slate-500 font-mono mt-1">Register your account to access your dashboard</p>
+          <h1 className={cyberHeading}>Create Account</h1>
+          <p className="mt-1 font-mono text-xs text-cyber-muted">Register to access your dashboard</p>
         </div>
 
-        {/* Interactive Form Input Elements */}
-        <form onSubmit={handleRegisterSubmit} className="space-y-4">
-          
-          {/* Full Name Input Field */}
+        {errorMessage && (
+          <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-medium text-red-400">
+            {errorMessage}
+          </div>
+        )}
+
+        <form onSubmit={handleRegistrationSubmit} className="space-y-4">
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5">
-              FULL NAME
-            </label>
+            <label className={cyberLabel}>Full Name</label>
             <input
               type="text"
+              name="fullName"
               required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all"
-              placeholder="ALi"
+              value={formData.fullName}
+              onChange={handleInputChange}
+              placeholder="Jane Doe"
+              className={cyberInput}
             />
           </div>
 
-          {/* Email Input Field */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5">
-              EMAIL ADDRESS
-            </label>
+            <label className={cyberLabel}>Email Address</label>
             <input
               type="email"
+              name="email"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all"
-              placeholder="ali@example.com"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="jane@example.com"
+              className={cyberInput}
             />
           </div>
 
-          {/* Password Input Field */}
           <div>
-            <div className="flex flex-col mb-1.5">
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                PASSWORD
-              </label>
-              <span className="text-[10px] text-slate-500 font-sans mt-0.5 normal-case tracking-normal">
-                *Must be at least 8 characters with uppercase, lowercase, and numbers
-              </span>
-            </div>
+            <label className={cyberLabel}>Password</label>
             <input
               type="password"
+              name="password"
               required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all"
-              placeholder="••••••••"
+              value={formData.password}
+              onChange={handleInputChange}
+              placeholder="At least 8 characters"
+              className={cyberInput}
             />
           </div>
 
-          {/* Confirm Password Input Field */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-1.5">
-              CONFIRM PASSWORD
-            </label>
+            <label className={cyberLabel}>Confirm Password</label>
             <input
               type="password"
+              name="confirmPassword"
               required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all"
-              placeholder="••••••••"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              placeholder="Re-enter your password"
+              className={cyberInput}
             />
           </div>
 
-          {/* Submit Action Trigger Button Control */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 py-3.5 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-purple-900/30 transition hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 hover:scale-[1.01] active:scale-95 mt-2"
-          >
-            {isSubmitting ? "Syncing Identity Network... ⛓️" : "CREATE ACCOUNT"}
+          <button type="submit" disabled={isSubmitting} className={`${cyberButtonPrimary} mt-2 w-full`}>
+            {isSubmitting ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
-        {/* Footer Subtext Nav Links Redirect */}
-        <div className="mt-8 pt-6 border-t border-slate-900/80 text-center text-xs text-slate-500 font-medium">
+        <div className="mt-8 border-t border-cyber-border pt-6 text-center text-xs text-cyber-muted">
           Already have an account?{" "}
-          <Link href="/login" className="text-purple-400 font-bold hover:text-purple-300 underline underline-offset-4 transition">
+          <Link
+            href="/login"
+            className="font-bold text-cyber-purple underline underline-offset-4 transition hover:text-purple-300"
+          >
             Sign In
           </Link>
         </div>
-
       </div>
     </div>
   );
