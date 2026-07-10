@@ -254,3 +254,76 @@ export const cyberCTAHeading =
   "text-2xl font-black tracking-tight text-cyber-text sm:text-3xl";
 
 export const cyberCTASubtext = "mt-3 text-sm text-cyber-muted max-w-lg mx-auto leading-relaxed";
+
+// ---- Theme toggle (Dark Cyberpunk <-> Light Cyberpunk) ----
+// Pairs with src/context/ThemeContext.js. The button itself never
+// hardcodes a color per-mode — it uses the same cyber-* tokens as
+// everything else, which repaint automatically via CSS variables.
+
+export const cyberThemeToggle =
+  "inline-flex items-center gap-2 rounded-xl border border-cyber-border bg-cyber-panel px-3.5 py-2 text-xs font-bold text-cyber-muted transition-all duration-200 hover:border-cyber-purple/40 hover:text-cyber-text";
+
+export const cyberThemeToggleIcon = "text-sm leading-none";
+
+// ---- Order history (Profile dashboard) ----
+
+export const cyberOrderCard =
+  "flex flex-col gap-4 rounded-2xl border border-cyber-border bg-cyber-panel/30 backdrop-blur-sm p-5 transition-all duration-300 hover:border-cyber-purple/30";
+
+export const cyberOrderId = "font-mono text-xs font-bold text-cyber-text";
+
+export const cyberOrderTimestamp = "font-mono text-[10px] text-cyber-muted";
+
+export const cyberOrderStatusBadge =
+  "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-[9px] font-black uppercase tracking-wider";
+
+export const cyberOrderItemRow =
+  "flex items-center justify-between border-b border-cyber-border/60 py-2 text-xs last:border-b-0";
+
+export const cyberOrderItemName = "text-cyber-text";
+
+export const cyberOrderItemQty = "font-mono text-[10px] text-cyber-muted";
+
+export const cyberOrderTotalRow =
+  "mt-1 flex items-center justify-between border-t border-cyber-border pt-4";
+
+export const cyberOrderTotalLabel =
+  "text-[11px] font-bold uppercase tracking-wider text-cyber-muted";
+
+export const cyberOrderTotalValue = "text-lg font-black text-cyber-purple";
+
+// ---- Chat history sidebar (Chat page) ----
+
+export const cyberChatTopBar =
+  "z-10 flex items-center justify-between border-b border-cyber-border bg-cyber-panel px-6 py-4";
+
+export const cyberChatSidebar =
+  "flex w-72 flex-col space-y-4 rounded-2xl border border-cyber-border bg-cyber-panel/40 p-4 backdrop-blur-sm";
+
+export const cyberChatSidebarTitle =
+  "font-mono text-xs font-black uppercase tracking-widest text-cyber-text";
+
+export const cyberChatSessionCard =
+  "flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-left transition duration-200";
+
+export const cyberChatSessionActive =
+  "border-cyber-purple bg-cyber-purple/10 text-cyber-text";
+
+export const cyberChatSessionInactive =
+  "border-cyber-border/60 bg-cyber-bg/40 text-cyber-muted hover:border-cyber-purple/40 hover:text-cyber-text";
+
+export const cyberChatSessionIcon =
+  "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-cyber-border bg-cyber-bg/60 text-sm";
+
+export const cyberChatSessionTitle = "truncate text-xs font-bold";
+
+export const cyberChatSessionTimestamp = "mt-1 block font-mono text-[9px] text-cyber-purple/70";
+
+export const cyberChatWindowFrame =
+  "h-[650px] flex-1 overflow-hidden rounded-2xl border border-cyber-border bg-cyber-panel shadow-2xl";
+
+export const cyberChatMobileToggle =
+  "inline-flex items-center gap-2 rounded-xl border border-cyber-border bg-cyber-panel px-3 py-2 text-xs font-bold text-cyber-muted transition hover:border-cyber-purple/40 hover:text-cyber-text md:hidden";
+
+export const cyberChatDrawerOverlay =
+  "fixed inset-0 z-40 bg-cyber-bg/70 backdrop-blur-sm md:hidden";
