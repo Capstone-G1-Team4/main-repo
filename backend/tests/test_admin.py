@@ -80,3 +80,64 @@ async def test_admin_conversation_logs(
         await client.get(f"{CONVERSATIONS}/{conv['id']}/messages", headers=admin["headers"])
     ).json()
     assert [m["role"] for m in messages] == ["user", "assistant"]
+
+
+async def test_admin_get_single_user(client: AsyncClient, customer: dict, admin: dict) -> None:
+    customer_id = customer["user"]["id"]
+    resp = await client.get(f"{USERS}/{customer_id}", headers=admin["headers"])
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["email"] == "customer@test.com"
+    assert body["role"] == "customer"
+    assert "hashed_password" not in body  # password never exposed
+
+    missing = "00000000-0000-0000-0000-000000000000"
+    resp = await client.get(f"{USERS}/{missing}", headers=admin["headers"])
+    assert resp.status_code == 404
+
+
+async def test_admin_user_search_and_role_filter(
+    client: AsyncClient, customer: dict, admin: dict
+) -> None:
+    # search by email fragment
+    resp = await client.get(USERS, params={"q": "customer@"}, headers=admin["headers"])
+    body = resp.json()
+    assert body["total"] == 1 and body["items"][0]["email"] == "customer@test.com"
+
+    # search by name fragment
+    resp = await client.get(USERS, params={"q": "Admin"}, headers=admin["headers"])
+    assert resp.json()["total"] == 1
+
+    # filter by role
+    resp = await client.get(USERS, params={"role": "admin"}, headers=admin["headers"])
+    body = resp.json()
+    assert body["total"] == 1 and body["items"][0]["role"] == "admin"
+
+    resp = await client.get(USERS, params={"role": "customer"}, headers=admin["headers"])
+    assert resp.json()["total"] == 1
+
+
+async def test_admin_orders_filtered_by_user(
+    client: AsyncClient, customer: dict, admin: dict, product_factory
+) -> None:
+    product = await product_factory(stock_quantity=5)
+    await client.post(
+        "/api/v1/orders",
+        json={"items": [{"product_id": product["id"], "quantity": 1}]},
+        headers=customer["headers"],
+    )
+    customer_id = customer["user"]["id"]
+
+    resp = await client.get(
+        "/api/v1/admin/orders", params={"user_id": customer_id}, headers=admin["headers"]
+    )
+    body = resp.json()
+    assert body["total"] == 1
+    assert body["items"][0]["user_id"] == customer_id
+
+    # a different (random) user id yields nothing
+    other = "00000000-0000-0000-0000-000000000000"
+    resp = await client.get(
+        "/api/v1/admin/orders", params={"user_id": other}, headers=admin["headers"]
+    )
+    assert resp.json()["total"] == 0

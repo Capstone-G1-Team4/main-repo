@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from app.core.deps import AdminUser, DbSession
-from app.schemas.auth import UserOut
+from app.schemas.auth import AdminUserQuery, UserOut
 from app.schemas.chat import ConversationOut, MessageOut
 from app.schemas.common import Page, PageParams
 from app.services import analytics_service, chat_service, user_service
@@ -26,10 +26,16 @@ async def analytics_summary(db: DbSession, _admin: AdminUser) -> dict:
 
 @router.get("/users", response_model=Page[UserOut])
 async def list_users(
-    db: DbSession, _admin: AdminUser, params: Annotated[PageParams, Query()]
+    db: DbSession, _admin: AdminUser, query: Annotated[AdminUserQuery, Query()]
 ) -> Page[UserOut]:
-    items, total = await user_service.admin_list_users(db, params)
-    return Page.build([UserOut.model_validate(u) for u in items], total, params)
+    items, total = await user_service.admin_list_users(db, query)
+    return Page.build([UserOut.model_validate(u) for u in items], total, query)
+
+
+@router.get("/users/{user_id}", response_model=UserOut)
+async def get_user(user_id: UUID, db: DbSession, _admin: AdminUser) -> UserOut:
+    user = await user_service.get_user(db, user_id)
+    return UserOut.model_validate(user)
 
 
 @router.patch("/users/{user_id}", response_model=UserOut)

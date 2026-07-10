@@ -149,6 +149,8 @@ async def admin_list_orders(
         base = base.where(Order.status == query.status)
     if query.customer_phone:
         base = base.where(Order.customer_phone.ilike(f"%{query.customer_phone}%"))
+    if query.user_id is not None:
+        base = base.where(Order.user_id == query.user_id)
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
     stmt = base.order_by(Order.created_at.desc()).offset(query.offset).limit(query.size)
     return list((await db.scalars(stmt)).all()), total

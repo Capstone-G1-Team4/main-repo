@@ -107,7 +107,18 @@ to render product cards.
 
 - `GET /api/v1/admin/analytics/summary` →
   `{orders_total, revenue, users_total, conversations_total, orders_by_status, top_products}`
-- `GET /api/v1/admin/orders?status=pending&customer_phone=079&page=&size=`
-- `PATCH /api/v1/admin/orders/{id}/status` `{"status": "confirmed"}`
-- `GET /api/v1/admin/users`, `PATCH /api/v1/admin/users/{id}` `{"is_active": false}`
-- `GET /api/v1/admin/conversations`, `GET /api/v1/admin/conversations/{id}/messages`
+- **Orders**:
+  - `GET /api/v1/admin/orders?status=pending&customer_phone=079&user_id=<uuid>&page=&size=`
+    — all orders, filterable by status, phone, or a specific user
+  - `PATCH /api/v1/admin/orders/{id}/status` `{"status": "confirmed"}`
+- **Users**:
+  - `GET /api/v1/admin/users?q=<email or name>&role=customer&is_active=true&page=&size=`
+    — paginated user list with search and filters
+  - `GET /api/v1/admin/users/{id}` — one user's full profile
+  - `PATCH /api/v1/admin/users/{id}` `{"is_active": false}` — deactivate/reactivate an account
+    (deactivating immediately invalidates that user's tokens)
+- **Conversations**: `GET /api/v1/admin/conversations`, `GET /api/v1/admin/conversations/{id}/messages`
+
+> Passwords are never returned by any endpoint — the `users` table stores only a bcrypt
+> hash (`hashed_password`), so the admin sees profile fields (email, name, phone, role,
+> status, dates) but never a password.

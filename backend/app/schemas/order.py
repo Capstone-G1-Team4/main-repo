@@ -61,3 +61,4 @@ class OrderStatusUpdate(BaseModel):
 class AdminOrderQuery(PageParams):
     status: OrderStatus | None = None
     customer_phone: str | None = None
+    user_id: UUID | None = None

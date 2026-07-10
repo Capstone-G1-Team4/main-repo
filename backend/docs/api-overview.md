@@ -16,7 +16,7 @@ Full request/response examples: [frontend-integration.md](frontend-integration.m
 | Orders (admin) | `GET /admin/orders`, `PATCH /admin/orders/{id}/status` | admin |
 | Locations | `POST /locations/resolve`, `GET/POST/DELETE /locations/addresses`, `PATCH /locations/addresses/{id}/default` | mixed |
 | Chat | `POST /chat/conversations`, `POST/GET /chat/conversations/{id}/messages` | mixed (guests via `X-Session-Token`) |
-| Admin | `GET /admin/analytics/summary`, `GET /admin/users`, `PATCH /admin/users/{id}`, `GET /admin/conversations`, `GET /admin/conversations/{id}/messages` | admin |
+| Admin | `GET /admin/analytics/summary`, `GET /admin/users` (search/filter), `GET /admin/users/{id}`, `PATCH /admin/users/{id}`, `GET /admin/orders` (filter by status/phone/user), `GET /admin/conversations`, `GET /admin/conversations/{id}/messages` | admin |
 | Internal | `GET /internal/products/export` | `X-Internal-API-Key` |
 
 ## Conventions

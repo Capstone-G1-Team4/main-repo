@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.user import UserRole
+from app.schemas.common import PageParams
 
 
 class RegisterRequest(BaseModel):
@@ -46,3 +47,9 @@ class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
     phone: str | None = Field(default=None, max_length=32)
     password: str | None = Field(default=None, min_length=8, max_length=128)
+
+
+class AdminUserQuery(PageParams):
+    q: str | None = Field(default=None, max_length=120, description="Search by email or name")
+    role: UserRole | None = None
+    is_active: bool | None = None
