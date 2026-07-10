@@ -5,26 +5,52 @@ import Link from "next/link";
 import ChatWindow from "./components/ChatWindow";
 import AddToCartModal from "../../src/components/AddToCartModal";
 import { useCart } from "../../src/context/CartContext";
+import {
+  cyberPageShell,
+  cyberNavLink,
+  cyberChatTopBar,
+  cyberChatSidebar,
+  cyberChatSidebarTitle,
+  cyberChatSessionCard,
+  cyberChatSessionActive,
+  cyberChatSessionInactive,
+  cyberChatSessionIcon,
+  cyberChatSessionTitle,
+  cyberChatSessionTimestamp,
+  cyberChatWindowFrame,
+  cyberChatMobileToggle,
+  cyberChatDrawerOverlay,
+  cyberButtonGhost,
+  cyberEmptyStateText,
+} from "../../src/lib/theme";
 
 /**
  * ChatPage
  * ------------------------------------------------------------------
- * Thin page shell: a session sidebar plus the standalone <ChatWindow />.
- * All conversational logic lives in ./components/ChatWindow.js; this
- * page is only responsible for real cart mutation (via useCart()) and
- * the shared <AddToCartModal /> confirmation, matching the pattern
- * used on the home and products pages.
+ * Page shell: a Previous Conversational Sessions sidebar (drawer on
+ * mobile, persistent panel on desktop) plus the standalone
+ * <ChatWindow />. All conversational logic lives in
+ * ./components/ChatWindow.js; this page owns session-list mock state,
+ * real cart mutation (via useCart()), and the shared
+ * <AddToCartModal /> confirmation, matching the pattern used on the
+ * home and products pages.
  */
 export default function ChatPage() {
   const { addItem } = useCart();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState(null);
   const [activeChatId, setActiveChatId] = useState(1);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Mock previous conversational sessions. Wire this up to a real
+  // session-history API when one is available — each entry only needs
+  // an icon, a short human title, and a timestamp to render.
   const chatHistory = [
-    { id: 1, title: "Current Session", date: "Today" },
-    { id: 2, title: "Laptop Inquiry", date: "Yesterday" },
-    { id: 3, title: "Mobile Comparison", date: "Earlier" },
+    { id: 1, icon: "💬", title: "Current Session", timestamp: "Just now" },
+    { id: 2, icon: "💻", title: "Gaming Laptop Search - July 10", timestamp: "Today, 9:14 AM" },
+    { id: 3, icon: "📱", title: "Mobile Comparison - July 8", timestamp: "2 days ago" },
+    { id: 4, icon: "📺", title: "Smart TV Recommendations - July 5", timestamp: "5 days ago" },
+    { id: 5, icon: "⌚", title: "Fitness Watch Search - June 29", timestamp: "Last week" },
   ];
 
   const handleAddToCart = (product) => {
@@ -33,51 +59,104 @@ export default function ChatPage() {
     setIsModalOpen(true);
   };
 
+  const handleSelectSession = (id) => {
+    setActiveChatId(id);
+    setIsSidebarOpen(false);
+  };
+
+  const handleNewSession = () => {
+    setActiveChatId(Date.now());
+    setIsSidebarOpen(false);
+  };
+
+  const renderSessionList = () => {
+    if (chatHistory.length === 0) {
+      return (
+        <div className="flex flex-1 items-center justify-center py-10">
+          <p className={cyberEmptyStateText}>No recent chats.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex-1 space-y-2.5 overflow-y-auto pr-1">
+        {chatHistory.map((session) => (
+          <div
+            key={session.id}
+            onClick={() => handleSelectSession(session.id)}
+            className={`${cyberChatSessionCard} ${
+              activeChatId === session.id ? cyberChatSessionActive : cyberChatSessionInactive
+            }`}
+          >
+            <span className={cyberChatSessionIcon}>{session.icon}</span>
+            <div className="min-w-0 flex-1">
+              <p className={cyberChatSessionTitle}>{session.title}</p>
+              <span className={cyberChatSessionTimestamp}>{session.timestamp}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-cyber-bg font-sans text-cyber-text selection:bg-cyber-purple/30">
+    <div className={`${cyberPageShell} relative flex min-h-screen w-full flex-col`}>
       {/* Top navigation */}
-      <div className="z-10 flex items-center justify-between border-b border-cyber-border bg-slate-950 px-6 py-4">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyber-purple transition hover:text-purple-300"
-        >
-          ⬅ Back to Marketplace
-        </Link>
+      <div className={cyberChatTopBar}>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className={cyberChatMobileToggle}
+            aria-label="Open chat history"
+          >
+            <span>☰</span> History
+          </button>
+          <Link href="/" className={cyberNavLink}>
+            ⬅ Back to Marketplace
+          </Link>
+        </div>
         <span className="font-mono text-xs font-semibold text-cyber-muted">AI Shopping Assistant</span>
       </div>
 
       {/* Sidebar + chat window */}
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 gap-6 bg-gradient-to-b from-slate-950 to-cyber-bg p-2 sm:p-4 md:p-6">
-        <div className="hidden w-64 flex-col space-y-4 rounded-2xl border border-cyber-border bg-cyber-panel/40 p-4 backdrop-blur-sm md:flex">
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 gap-6 p-2 sm:p-4 md:p-6">
+        {/* Desktop sidebar */}
+        <div className={`${cyberChatSidebar} hidden md:flex`}>
           <div className="flex items-center justify-between">
-            <h3 className="font-mono text-xs font-black uppercase tracking-widest text-cyber-text">Chat History</h3>
-            <button
-              onClick={() => setActiveChatId(Date.now())}
-              className="rounded bg-cyber-purple/10 border border-cyber-purple/20 px-2 py-1 text-[10px] text-cyber-purple transition hover:bg-cyber-purple hover:text-white"
-            >
+            <h3 className={cyberChatSidebarTitle}>Previous Sessions</h3>
+            <button type="button" onClick={handleNewSession} className={cyberButtonGhost}>
               + New
             </button>
           </div>
-
-          <div className="flex-1 space-y-2.5 overflow-y-auto pr-1">
-            {chatHistory.map((history) => (
-              <div
-                key={history.id}
-                onClick={() => setActiveChatId(history.id)}
-                className={`cursor-pointer rounded-xl border p-3 text-left transition duration-200 ${
-                  activeChatId === history.id
-                    ? "border-cyber-purple bg-cyber-purple/10 text-white"
-                    : "border-cyber-border/60 bg-slate-950/40 text-cyber-muted hover:border-cyber-purple/40 hover:text-cyber-text"
-                }`}
-              >
-                <p className="truncate text-xs font-bold">{history.title}</p>
-                <span className="mt-1 block font-mono text-[9px] text-cyber-purple/70">{history.date}</span>
-              </div>
-            ))}
-          </div>
+          {renderSessionList()}
         </div>
 
-        <div className="h-[650px] flex-1 overflow-hidden rounded-2xl border border-cyber-border bg-slate-950 shadow-2xl">
+        {/* Mobile drawer sidebar */}
+        {isSidebarOpen && (
+          <div className="md:hidden">
+            <div className={cyberChatDrawerOverlay} onClick={() => setIsSidebarOpen(false)} />
+            <div className={`${cyberChatSidebar} fixed left-2 top-20 bottom-2 z-50 w-72`}>
+              <div className="flex items-center justify-between">
+                <h3 className={cyberChatSidebarTitle}>Previous Sessions</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarOpen(false)}
+                  className={cyberButtonGhost}
+                  aria-label="Close chat history"
+                >
+                  ✕
+                </button>
+              </div>
+              <button type="button" onClick={handleNewSession} className={cyberButtonGhost}>
+                + New Session
+              </button>
+              {renderSessionList()}
+            </div>
+          </div>
+        )}
+
+        <div className={cyberChatWindowFrame}>
           <ChatWindow key={activeChatId} onAddToCart={handleAddToCart} />
         </div>
       </div>

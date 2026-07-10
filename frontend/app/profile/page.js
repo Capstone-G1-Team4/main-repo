@@ -12,16 +12,45 @@ import {
   cyberButtonGhost,
   cyberNavLink,
   cyberEmptyState,
+  cyberEmptyStateText,
+  cyberSectionEyebrow,
+  cyberOrderCard,
+  cyberOrderId,
+  cyberOrderTimestamp,
+  cyberOrderStatusBadge,
+  cyberOrderItemRow,
+  cyberOrderItemName,
+  cyberOrderItemQty,
+  cyberOrderTotalRow,
+  cyberOrderTotalLabel,
+  cyberOrderTotalValue,
 } from "../../src/lib/theme";
+
+// Status → badge color mapping. These are semantic order-state colors
+// (not part of the core cyber-* brand palette), so they live here as a
+// small page-local config rather than as new tokens in theme.js.
+const ORDER_STATUS_STYLES = {
+  Pending: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+  Shipped: "border-cyan-500/20 bg-cyan-500/10 text-cyan-400",
+  Delivered: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+};
+
+const ORDER_STATUS_ICON = {
+  Pending: "⏳",
+  Shipped: "🚚",
+  Delivered: "✅",
+};
 
 /**
  * ProfilePage
  * ------------------------------------------------------------------
  * Client-side mock dashboard for the signed-in user: a profile
  * metadata grid (Username, Role, Authorized Email) built from
- * cyberInput/cyberLabel, plus a lightweight order history table.
- * All data here is static mock state — wire it up to a real
- * session/user API when one is available.
+ * cyberInput/cyberLabel, plus an Order History dashboard rendered as
+ * a responsive grid of order cards (Order ID, timestamp, status
+ * badge, itemized quantities, total price). All data here is static
+ * mock state — wire it up to a real session/order API when one is
+ * available.
  */
 export default function ProfilePage() {
   const [profile] = useState({
@@ -32,29 +61,38 @@ export default function ProfilePage() {
     memberSince: "March 15, 2026",
   });
 
-  const orderHistory = [
+  const [orderHistory] = useState([
     {
       id: "ORD-9410",
-      date: "2026-06-12",
-      amount: 245.0,
+      timestamp: "2026-06-12T14:32:00",
       status: "Delivered",
-      items: "AeroStride Runners x1, SoundWave Elite x1",
+      items: [
+        { name: "AeroStride Runners", quantity: 1, price: 145.0 },
+        { name: "SoundWave Elite", quantity: 1, price: 100.0 },
+      ],
     },
     {
       id: "ORD-8821",
-      date: "2026-05-02",
-      amount: 799.0,
+      timestamp: "2026-05-02T09:05:00",
       status: "Delivered",
-      items: "Quantum Phone Pro x1",
+      items: [{ name: "Quantum Phone Pro", quantity: 1, price: 799.0 }],
+    },
+    {
+      id: "ORD-1103",
+      timestamp: "2026-07-08T18:47:00",
+      status: "Shipped",
+      items: [{ name: "Cyber Cushion Trainer", quantity: 2, price: 62.5 }],
     },
     {
       id: "ORD-1052",
-      date: "2026-07-06",
-      amount: 135.5,
-      status: "Processing",
-      items: "Cyber Cushion Trainer x2",
+      timestamp: "2026-07-09T11:20:00",
+      status: "Pending",
+      items: [
+        { name: "NovaVision 55\" Smart TV", quantity: 1, price: 610.0 },
+        { name: "WallMount Pro Bracket", quantity: 1, price: 34.99 },
+      ],
     },
-  ];
+  ]);
 
   const metadataFields = [
     { label: "Username", value: profile.username },
@@ -68,6 +106,20 @@ export default function ProfilePage() {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const formatTimestamp = (isoString) => {
+    const date = new Date(isoString);
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  const orderTotal = (items) =>
+    items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
     <div className={cyberPageShell}>
@@ -121,54 +173,52 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {/* Order history */}
-        <section className={`${cyberPanel} overflow-hidden`}>
-          <div className="border-b border-cyber-border bg-slate-950/40 p-5">
-            <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-cyber-purple">
-              Order History
-            </h3>
+        {/* Order history dashboard */}
+        <section>
+          <div className="mb-6">
+            <p className={cyberSectionEyebrow}>Dashboard</p>
+            <h2 className="mt-1 text-lg font-black tracking-tight text-cyber-text">Order History</h2>
           </div>
 
           {orderHistory.length === 0 ? (
             <div className={cyberEmptyState}>
-              <p className="text-sm text-cyber-muted">No orders yet.</p>
+              <p className={cyberEmptyStateText}>No past orders found.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-b border-cyber-border bg-slate-950 font-mono font-bold uppercase text-cyber-muted">
-                    <th className="p-4">Order ID</th>
-                    <th className="p-4">Date</th>
-                    <th className="p-4">Products</th>
-                    <th className="p-4">Amount</th>
-                    <th className="p-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-cyber-border/60 font-medium">
-                  {orderHistory.map((order) => (
-                    <tr key={order.id} className="transition hover:bg-cyber-panel/40">
-                      <td className="p-4 font-mono text-cyber-muted">{order.id}</td>
-                      <td className="p-4 font-mono text-cyber-muted">{order.date}</td>
-                      <td className="max-w-[220px] truncate p-4 text-cyber-text" title={order.items}>
-                        {order.items}
-                      </td>
-                      <td className="p-4 font-mono font-bold text-cyber-purple">${order.amount.toFixed(2)}</td>
-                      <td className="p-4">
-                        <span
-                          className={`inline-flex rounded-md border px-2 py-0.5 font-mono text-[9px] font-black uppercase tracking-wider ${
-                            order.status === "Delivered"
-                              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                              : "border-cyan-500/20 bg-cyan-500/10 text-cyan-400"
-                          }`}
-                        >
-                          {order.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {orderHistory.map((order) => {
+                const statusStyle = ORDER_STATUS_STYLES[order.status] || ORDER_STATUS_STYLES.Pending;
+                const statusIcon = ORDER_STATUS_ICON[order.status] || "•";
+
+                return (
+                  <article key={order.id} className={cyberOrderCard}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className={cyberOrderId}>{order.id}</p>
+                        <p className={cyberOrderTimestamp}>{formatTimestamp(order.timestamp)}</p>
+                      </div>
+                      <span className={`${cyberOrderStatusBadge} ${statusStyle}`}>
+                        <span>{statusIcon}</span>
+                        {order.status}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col">
+                      {order.items.map((item) => (
+                        <div key={item.name} className={cyberOrderItemRow}>
+                          <span className={cyberOrderItemName}>{item.name}</span>
+                          <span className={cyberOrderItemQty}>x{item.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className={cyberOrderTotalRow}>
+                      <span className={cyberOrderTotalLabel}>Total</span>
+                      <span className={cyberOrderTotalValue}>${orderTotal(order.items).toFixed(2)}</span>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
