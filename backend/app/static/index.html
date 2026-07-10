@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Panel — AI Shopping Assistant</title>
+  <style>
+    :root { --bg:#0f172a; --card:#1e293b; --line:#334155; --text:#e2e8f0;
+            --muted:#94a3b8; --accent:#3b82f6; --ok:#22c55e; --err:#ef4444; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+           background: var(--bg); color: var(--text); line-height:1.5; }
+    header { padding:20px 24px; border-bottom:1px solid var(--line);
+             display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+    header h1 { font-size:18px; margin:0; }
+    #whoami { color: var(--muted); font-size:14px; }
+    main { max-width:720px; margin:0 auto; padding:24px; }
+    .card { background: var(--card); border:1px solid var(--line); border-radius:12px;
+            padding:20px; margin-bottom:20px; }
+    .card h2 { margin:0 0 16px; font-size:16px; }
+    label { display:block; font-size:13px; color: var(--muted); margin:12px 0 4px; }
+    input, select, textarea { width:100%; padding:10px 12px; border-radius:8px;
+            border:1px solid var(--line); background:#0f172a; color:var(--text); font-size:14px; }
+    textarea { min-height:70px; resize:vertical; font-family:inherit; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; }
+    .row > div { flex:1; min-width:140px; }
+    button { margin-top:16px; padding:10px 18px; border:none; border-radius:8px;
+             background: var(--accent); color:white; font-size:14px; font-weight:600; cursor:pointer; }
+    button:hover { filter: brightness(1.1); }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .hint { font-size:12px; color: var(--muted); margin-top:4px; }
+    .msg { margin-top:14px; padding:10px 12px; border-radius:8px; font-size:14px; display:none; }
+    .msg.ok  { background: rgba(34,197,94,.15); color:#86efac; display:block; }
+    .msg.err { background: rgba(239,68,68,.15); color:#fca5a5; display:block; }
+    .hidden { display:none; }
+    .recent { list-style:none; padding:0; margin:0; }
+    .recent li { padding:10px 0; border-bottom:1px solid var(--line); font-size:14px; }
+    .recent li:last-child { border-bottom:none; }
+    .recent small { color: var(--muted); }
+    .req { color: var(--err); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Admin Panel · Add Product</h1>
+    <span id="whoami"></span>
+  </header>
+
+  <main>
+    <!-- Login -->
+    <section id="loginCard" class="card">
+      <h2>Sign in</h2>
+      <label>Admin email</label>
+      <input id="email" type="email" placeholder="admin@example.com" autocomplete="username" />
+      <label>Password</label>
+      <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" />
+      <button id="loginBtn">Sign in</button>
+      <div id="loginMsg" class="msg"></div>
+    </section>
+
+    <!-- Add product -->
+    <section id="productCard" class="card hidden">
+      <h2>New product</h2>
+      <label>Name <span class="req">*</span></label>
+      <input id="p_name" placeholder="e.g. Samsung Galaxy S24" />
+      <div class="row">
+        <div>
+          <label>Price <span class="req">*</span></label>
+          <input id="p_price" type="number" step="0.01" min="0" placeholder="1099.00" />
+        </div>
+        <div>
+          <label>Currency</label>
+          <input id="p_currency" value="JOD" maxlength="3" />
+        </div>
+        <div>
+          <label>Stock</label>
+          <input id="p_stock" type="number" min="0" value="0" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Brand</label>
+          <input id="p_brand" placeholder="Samsung" />
+        </div>
+        <div>
+          <label>Category</label>
+          <select id="p_category"><option value="">— none —</option></select>
+        </div>
+      </div>
+      <label>Description</label>
+      <textarea id="p_description" placeholder="Short description shown to customers"></textarea>
+      <label>Image URL</label>
+      <input id="p_image" placeholder="https://… (optional)" />
+      <label>Specifications (JSON, optional)</label>
+      <textarea id="p_specs" placeholder='{"ram": "12GB", "storage": "512GB"}'></textarea>
+      <div class="hint">Leave blank or enter a valid JSON object.</div>
+      <button id="addBtn">Add product</button>
+      <div id="addMsg" class="msg"></div>
+    </section>
+
+    <section id="recentCard" class="card hidden">
+      <h2>Added this session</h2>
+      <ul id="recent" class="recent"></ul>
+    </section>
+  </main>
+
+  <script>
+    const API = "/api/v1";
+    let token = null;
+
+    const $ = (id) => document.getElementById(id);
+    const show = (el, kind, text) => { el.className = "msg " + kind; el.textContent = text; };
+
+    async function api(path, { method = "GET", body, auth = false } = {}) {
+      const headers = { "Content-Type": "application/json" };
+      if (auth && token) headers["Authorization"] = "Bearer " + token;
+      const res = await fetch(API + path, {
+        method, headers, body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw data; // {detail, code}
+      return data;
+    }
+
+    async function loadCategories() {
+      try {
+        const tree = await api("/categories");
+        const sel = $("p_category");
+        const walk = (nodes, depth) => nodes.forEach((n) => {
+          const opt = document.createElement("option");
+          opt.value = n.id;
+          opt.textContent = " ".repeat(depth * 2) + n.name;
+          sel.appendChild(opt);
+          if (n.children && n.children.length) walk(n.children, depth + 1);
+        });
+        walk(tree, 0);
+      } catch (_) { /* categories are optional */ }
+    }
+
+    $("loginBtn").onclick = async () => {
+      const btn = $("loginBtn"); btn.disabled = true;
+      try {
+        const out = await api("/auth/login", {
+          method: "POST",
+          body: { email: $("email").value.trim(), password: $("password").value },
+        });
+        token = out.access_token;
+        const me = await api("/auth/me", { auth: true });
+        if (me.role !== "admin") {
+          show($("loginMsg"), "err", "This account is not an admin — product creation will be rejected.");
+          btn.disabled = false; return;
+        }
+        $("whoami").textContent = "Signed in as " + me.email + " (admin)";
+        $("loginCard").classList.add("hidden");
+        $("productCard").classList.remove("hidden");
+        $("recentCard").classList.remove("hidden");
+        loadCategories();
+      } catch (e) {
+        show($("loginMsg"), "err", e.detail || "Login failed");
+        btn.disabled = false;
+      }
+    };
+
+    $("addBtn").onclick = async () => {
+      const msg = $("addMsg");
+      const name = $("p_name").value.trim();
+      const price = $("p_price").value.trim();
+      if (!name || !price) { show(msg, "err", "Name and price are required."); return; }
+
+      let specs = {};
+      const rawSpecs = $("p_specs").value.trim();
+      if (rawSpecs) {
+        try { specs = JSON.parse(rawSpecs); }
+        catch (_) { show(msg, "err", "Specifications must be valid JSON."); return; }
+      }
+
+      const payload = {
+        name, price,
+        currency: $("p_currency").value.trim() || "JOD",
+        stock_quantity: parseInt($("p_stock").value || "0", 10),
+        brand: $("p_brand").value.trim() || null,
+        description: $("p_description").value.trim(),
+        specifications: specs,
+        image_urls: $("p_image").value.trim() ? [$("p_image").value.trim()] : [],
+      };
+      const cat = $("p_category").value;
+      if (cat) payload.category_id = parseInt(cat, 10);
+
+      const btn = $("addBtn"); btn.disabled = true;
+      try {
+        const p = await api("/products", { method: "POST", body: payload, auth: true });
+        show(msg, "ok", "Added: " + p.name + "  (slug: " + p.slug + ")");
+        const li = document.createElement("li");
+        li.innerHTML = "<strong>" + p.name + "</strong> — " + p.price + " " + p.currency +
+                       " · stock " + p.stock_quantity + "<br><small>" + p.id + "</small>";
+        $("recent").prepend(li);
+        ["p_name","p_price","p_brand","p_description","p_image","p_specs"].forEach((id) => $(id).value = "");
+        $("p_stock").value = "0";
+      } catch (e) {
+        const detail = typeof e.detail === "string" ? e.detail : "Validation error";
+        show(msg, "err", detail + (e.code ? " (" + e.code + ")" : ""));
+      } finally {
+        btn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

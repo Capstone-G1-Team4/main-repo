@@ -18,6 +18,9 @@ docker compose up --build
 Migrations run automatically on startup. Then:
 
 - Interactive docs: http://localhost:8000/docs
+- **Admin panel** (built-in tool to add products): http://localhost:8000/admin-ui/ —
+  sign in with an admin account and fill the form. It's a self-contained internal utility,
+  not the customer frontend (that's Member 1's React app); it just calls the same public APIs.
 - Liveness: `GET /health` — Readiness (DB + AI service): `GET /health/ready`
 - Postgres is exposed on host port **5433** (to avoid clashing with a local install)
 

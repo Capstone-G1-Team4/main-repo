@@ -1,7 +1,10 @@
 """Application entrypoint: wires routers, middleware, and exception handlers. No business logic."""
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import (
     admin,
@@ -46,3 +49,11 @@ app.include_router(orders.router, prefix=settings.api_v1_prefix)
 app.include_router(orders.admin_router, prefix=settings.api_v1_prefix)
 app.include_router(chat.router, prefix=settings.api_v1_prefix)
 app.include_router(admin.router, prefix=settings.api_v1_prefix)
+
+# Lightweight built-in admin panel (internal tool, not the customer frontend):
+# a self-contained HTML page for adding products by signing in as an admin.
+app.mount(
+    "/admin-ui",
+    StaticFiles(directory=Path(__file__).parent / "static", html=True),
+    name="admin-ui",
+)
