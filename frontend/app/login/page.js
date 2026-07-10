@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { setStoredToken } from "../../src/lib/api";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -54,10 +55,13 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     // Frontend-only simulation. Replace with a real auth call once the
-    // backend is wired up; this intentionally does not persist a session.
+    // backend is wired up — this should POST to the real login endpoint
+    // and call setStoredToken() with the token it returns instead of
+    // this hardcoded placeholder.
     setTimeout(() => {
+      setStoredToken("mock-login-token");
       setIsSubmitting(false);
-      router.push("/");
+      router.push("/profile");
     }, 1200);
   };
 

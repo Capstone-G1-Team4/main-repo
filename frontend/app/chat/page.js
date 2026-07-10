@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ChatWindow from "./components/ChatWindow";
 import AddToCartModal from "../../src/components/AddToCartModal";
 import { useCart } from "../../src/context/CartContext";
+import { apiFetch, getStoredToken, ApiError } from "../../src/lib/api";
 import {
   cyberPageShell,
   cyberNavLink,
@@ -25,33 +27,161 @@ import {
 } from "../../src/lib/theme";
 
 /**
- * ChatPage
- * ------------------------------------------------------------------
- * Page shell: a Previous Conversational Sessions sidebar (drawer on
- * mobile, persistent panel on desktop) plus the standalone
- * <ChatWindow />. All conversational logic lives in
- * ./components/ChatWindow.js; this page owns session-list mock state,
- * real cart mutation (via useCart()), and the shared
- * <AddToCartModal /> confirmation, matching the pattern used on the
- * home and products pages.
+ * ASSUMPTIONS — no chat-history endpoint path was specified, so this page
+ * uses conventional REST routes. Adjust the paths below once the real
+ * ones are confirmed; everything else (loading, empty states, session
+ * switching) works the same regardless of the exact path names:
+ *
+ *   GET  /chat/sessions              -> [{ id, title, updated_at }, ...]
+ *   GET  /chat/sessions/{id}/messages -> [{ id, sender, type, content,
+ *                                           timestamp, products? }, ...]
+ *   POST /chat/sessions              -> { id, title, updated_at }
+ *   POST /chat/sessions/{id}/messages -> persists one message
  */
+
+/** Normalizes a backend session record, with defensive field-name
+ *  fallbacks since the exact schema wasn't confirmed. */
+function normalizeSession(raw) {
+  return {
+    id: raw.id || raw.session_id,
+    title: raw.title || raw.name || "Untitled Session",
+    timestamp: raw.updated_at || raw.timestamp || raw.created_at,
+  };
+}
+
+function formatSessionTimestamp(isoString) {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return isoString;
+
+  const diffMs = Date.now() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 0) return `Today, ${date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export default function ChatPage() {
+  const router = useRouter();
   const { addItem } = useCart();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState(null);
-  const [activeChatId, setActiveChatId] = useState(1);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Mock previous conversational sessions. Wire this up to a real
-  // session-history API when one is available — each entry only needs
-  // an icon, a short human title, and a timestamp to render.
-  const chatHistory = [
-    { id: 1, icon: "💬", title: "Current Session", timestamp: "Just now" },
-    { id: 2, icon: "💻", title: "Gaming Laptop Search - July 10", timestamp: "Today, 9:14 AM" },
-    { id: 3, icon: "📱", title: "Mobile Comparison - July 8", timestamp: "2 days ago" },
-    { id: 4, icon: "📺", title: "Smart TV Recommendations - July 5", timestamp: "5 days ago" },
-    { id: 5, icon: "⌚", title: "Fitness Watch Search - June 29", timestamp: "Last week" },
-  ];
+  const [sessions, setSessions] = useState([]);
+  const [isSessionsLoading, setIsSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState("");
+
+  const [activeChatId, setActiveChatId] = useState(null);
+  const [activeMessages, setActiveMessages] = useState([]);
+  const [isMessagesLoading, setIsMessagesLoading] = useState(false);
+
+  // Load the session list on mount. A brand-new user simply gets an
+  // empty array back — the sidebar renders the "No recent chats" empty
+  // state, and the chat window starts on a fresh, unsaved session
+  // showing only ChatWindow's built-in AI welcome message.
+  useEffect(() => {
+    const token = getStoredToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    let isCancelled = false;
+
+    async function loadSessions() {
+      setIsSessionsLoading(true);
+      setSessionsError("");
+
+      try {
+        const response = await apiFetch("/chat/sessions");
+        if (isCancelled) return;
+
+        const list = Array.isArray(response) ? response : response?.sessions || [];
+        const normalized = list.map(normalizeSession);
+        setSessions(normalized);
+
+        if (normalized.length > 0) {
+          selectSession(normalized[0].id);
+        }
+      } catch (error) {
+        if (isCancelled) return;
+
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          router.push("/login");
+          return;
+        }
+
+        setSessionsError(
+          error instanceof ApiError ? error.message : "Couldn't load your previous chats."
+        );
+      } finally {
+        if (!isCancelled) setIsSessionsLoading(false);
+      }
+    }
+
+    loadSessions();
+
+    return () => {
+      isCancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
+
+  const selectSession = async (sessionId) => {
+    setActiveChatId(sessionId);
+    setIsSidebarOpen(false);
+    setIsMessagesLoading(true);
+
+    try {
+      const response = await apiFetch(`/chat/sessions/${sessionId}/messages`);
+      const messages = Array.isArray(response) ? response : response?.messages || [];
+      setActiveMessages(messages);
+    } catch (error) {
+      console.error("Failed to load session messages", error);
+      setActiveMessages([]);
+    } finally {
+      setIsMessagesLoading(false);
+    }
+  };
+
+  const handleNewSession = async () => {
+    setIsSidebarOpen(false);
+
+    try {
+      const created = await apiFetch("/chat/sessions", { method: "POST", body: JSON.stringify({}) });
+      const session = normalizeSession(created);
+      setSessions((prev) => [session, ...prev]);
+      setActiveChatId(session.id);
+      setActiveMessages([]);
+    } catch (error) {
+      console.error("Failed to create a new chat session", error);
+      // Fall back to a local-only session so the user isn't blocked —
+      // it just won't persist until the backend call succeeds later.
+      setActiveChatId(`local-${Date.now()}`);
+      setActiveMessages([]);
+    }
+  };
+
+  // Persists new messages for the active session as ChatWindow's local
+  // state changes. Fire-and-forget: a failed save doesn't interrupt the
+  // conversation, it just won't be there next time the session loads.
+  const handleMessagesChange = (messages) => {
+    if (!activeChatId || typeof activeChatId === "string" && activeChatId.startsWith("local-")) return;
+
+    const newMessage = messages[messages.length - 1];
+    if (!newMessage) return;
+
+    apiFetch(`/chat/sessions/${activeChatId}/messages`, {
+      method: "POST",
+      body: JSON.stringify(newMessage),
+    }).catch((error) => {
+      console.error("Failed to save chat message", error);
+    });
+  };
 
   const handleAddToCart = (product) => {
     addItem(product);
@@ -59,18 +189,24 @@ export default function ChatPage() {
     setIsModalOpen(true);
   };
 
-  const handleSelectSession = (id) => {
-    setActiveChatId(id);
-    setIsSidebarOpen(false);
-  };
-
-  const handleNewSession = () => {
-    setActiveChatId(Date.now());
-    setIsSidebarOpen(false);
-  };
-
   const renderSessionList = () => {
-    if (chatHistory.length === 0) {
+    if (isSessionsLoading) {
+      return (
+        <div className="flex flex-1 items-center justify-center py-10">
+          <p className={cyberEmptyStateText}>Loading chats…</p>
+        </div>
+      );
+    }
+
+    if (sessionsError) {
+      return (
+        <div className="flex flex-1 items-center justify-center py-10">
+          <p className={cyberEmptyStateText}>{sessionsError}</p>
+        </div>
+      );
+    }
+
+    if (sessions.length === 0) {
       return (
         <div className="flex flex-1 items-center justify-center py-10">
           <p className={cyberEmptyStateText}>No recent chats.</p>
@@ -80,18 +216,18 @@ export default function ChatPage() {
 
     return (
       <div className="flex-1 space-y-2.5 overflow-y-auto pr-1">
-        {chatHistory.map((session) => (
+        {sessions.map((session) => (
           <div
             key={session.id}
-            onClick={() => handleSelectSession(session.id)}
+            onClick={() => selectSession(session.id)}
             className={`${cyberChatSessionCard} ${
               activeChatId === session.id ? cyberChatSessionActive : cyberChatSessionInactive
             }`}
           >
-            <span className={cyberChatSessionIcon}>{session.icon}</span>
+            <span className={cyberChatSessionIcon}>💬</span>
             <div className="min-w-0 flex-1">
               <p className={cyberChatSessionTitle}>{session.title}</p>
-              <span className={cyberChatSessionTimestamp}>{session.timestamp}</span>
+              <span className={cyberChatSessionTimestamp}>{formatSessionTimestamp(session.timestamp)}</span>
             </div>
           </div>
         ))}
@@ -157,7 +293,18 @@ export default function ChatPage() {
         )}
 
         <div className={cyberChatWindowFrame}>
-          <ChatWindow key={activeChatId} onAddToCart={handleAddToCart} />
+          {isMessagesLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <p className={cyberEmptyStateText}>Loading conversation…</p>
+            </div>
+          ) : (
+            <ChatWindow
+              key={activeChatId || "new"}
+              onAddToCart={handleAddToCart}
+              initialMessages={activeMessages}
+              onMessagesChange={handleMessagesChange}
+            />
+          )}
         </div>
       </div>
 
