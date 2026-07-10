@@ -64,7 +64,8 @@ import {
   cyberCTASection,
   cyberCTAHeading,
   cyberCTASubtext,
-} from "../src/lib/theme";
+} from "../src/lib/theme"; 
+import ThemeToggle from "../src/components/ThemeToggle";
 
 const FEATURED_PRODUCT_COUNT = 8;
 
@@ -197,13 +198,14 @@ export default function HomePage() {
               <span className={cyberBrandText}>NextGen Core</span>
             </Link>
 
-            <div className="flex items-center gap-5">
-              <Link href="/products" className={cyberNavLink}>🛍️ Explore Products</Link>
-              <Link href="/about" className={cyberNavLink}>ℹ️ About Us</Link>
-              <Link href="/profile" className={cyberNavLink}>👤 My Profile</Link>
-              <Link href="/login" className={cyberNavLoginButton}>
-                Login 🔑
-              </Link>
+           <div className="flex items-center gap-5">
+             <Link href="/products" className={cyberNavLink}>🛍️ Explore Products</Link>
+             <Link href="/about" className={cyberNavLink}>ℹ️ About Us</Link>
+             <Link href="/profile" className={cyberNavLink}>👤 My Profile</Link>
+             <ThemeToggle />
+             <Link href="/login" className={cyberNavLoginButton}>
+               Login 🔑
+            </Link>
             </div>
           </div>
         </div>
@@ -236,9 +238,10 @@ export default function HomePage() {
               ℹ️ About Team
             </Link>
           </div>
+          
         </div>
       </div>
-
+      
       {/* ---------------------------------------------------------------- */}
       {/* Platform Features                                                */}
       {/* ---------------------------------------------------------------- */}
