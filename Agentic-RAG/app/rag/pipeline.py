@@ -3,21 +3,22 @@ RAG pipeline: retrieve product context and generate a grounded answer.
 """
 
 from app.llm import generate_answer
-from app.rag.retriever import retrieve_products
 
 
 def rag_answer(question: str, context: str | None = None, history: list | None = None):
     """
     Generate an answer using the LLM with product context.
 
-    - If context is not provided, it is retrieved automatically
-      from the vector store.
+    - If context is not provided, it is retrieved automatically using
+      the hybrid retriever (keyword + semantic + price/category filters).
     - history (optional) gives the model the conversation so far,
       so follow-up questions like "does it have a good camera?" work.
     """
     if context is None:
-        products = retrieve_products(question)
-        context = "\n\n".join(p["content"] for p in products)
+        from app.agent.tools import search_products
+
+        products = search_products(question)
+        context = "\n\n".join(p["description"] for p in products)
 
     prompt = f"""
 You are an AI shopping assistant for an online store.
