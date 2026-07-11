@@ -7,6 +7,32 @@ Audience: **Member 1** (React/Next.js). Everything the UI needs to talk to the b
 - Interactive playground: `http://localhost:8000/docs`
 - CORS: `http://localhost:3000` is allowed by default (`CORS_ORIGINS` env var)
 
+## Compatibility shim (temporary)
+
+To unblock the current frontend, the backend also accepts the paths/names the
+frontend uses today, in addition to the canonical ones:
+
+- **No `/api/v1` prefix**: every endpoint is also served at the root, e.g.
+  `GET /auth/me`, `POST /auth/login`, `GET /orders`, `GET /products` all work
+  (same behavior as their `/api/v1/...` equivalents).
+- **Chat `sessions` aliases**: `GET/POST /chat/sessions` and
+  `GET/POST /chat/sessions/{id}/messages` map onto conversations, returning the
+  frontend's shape (`sender`/`type`/`content`/`timestamp`, and `{id,title,updated_at}`
+  for sessions).
+
+Prefer the canonical `/api/v1/...` + `conversations` paths for new code; the shim
+will be removed once the frontend adopts them.
+
+**Two things the shim can NOT fix — they live in frontend code:**
+1. `app/register/page.js` has its API call commented out and `app/login/page.js`
+   stores a hardcoded `"mock-login-token"` — so no account reaches the backend and
+   the fake token fails auth. Un-stub these to call `POST /auth/register` and
+   `POST /auth/login` (store the returned `access_token`).
+2. `app/chat/components/ChatWindow.js` generates the AI reply locally (`buildAiReply`
+   over the bundled `products.json`) and never calls `onMessagesChange`, so the
+   conversation never reaches the backend or the AI service. Wire ChatWindow to POST
+   messages and route AI answers through `POST /api/v1/chat/conversations/{id}/messages`.
+
 ## Conventions
 
 - **Errors** always look like `{"detail": "...", "code": "..."}`. Match on `code`:

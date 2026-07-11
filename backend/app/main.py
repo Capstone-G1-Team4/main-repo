@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.api import compat
 from app.api.v1 import (
     admin,
     auth,
@@ -40,15 +41,30 @@ app.add_middleware(
 register_exception_handlers(app)
 
 app.include_router(health.router)
-app.include_router(auth.router, prefix=settings.api_v1_prefix)
-app.include_router(products.router, prefix=settings.api_v1_prefix)
-app.include_router(categories.router, prefix=settings.api_v1_prefix)
-app.include_router(internal.router, prefix=settings.api_v1_prefix)
-app.include_router(locations.router, prefix=settings.api_v1_prefix)
-app.include_router(orders.router, prefix=settings.api_v1_prefix)
-app.include_router(orders.admin_router, prefix=settings.api_v1_prefix)
-app.include_router(chat.router, prefix=settings.api_v1_prefix)
-app.include_router(admin.router, prefix=settings.api_v1_prefix)
+
+# Canonical API — documented at /docs, the source of truth for teammates.
+_api_routers = (
+    auth.router,
+    products.router,
+    categories.router,
+    internal.router,
+    locations.router,
+    orders.router,
+    orders.admin_router,
+    chat.router,
+    admin.router,
+)
+for _router in _api_routers:
+    app.include_router(_router, prefix=settings.api_v1_prefix)
+
+# Frontend-compatibility shim (temporary): the current frontend calls the API
+# without the /api/v1 prefix and names chat resources "sessions". Re-mount the
+# same routers at the root and add the chat "sessions" aliases so those calls
+# resolve instead of 404ing. Hidden from /docs (the canonical API above is the
+# documented one). Remove once the frontend adopts /api/v1 + "conversations".
+for _router in _api_routers:
+    app.include_router(_router, include_in_schema=False)
+app.include_router(compat.router, include_in_schema=False)
 
 # Lightweight built-in admin panel (internal tool, not the customer frontend):
 # a self-contained HTML page for adding products by signing in as an admin.
