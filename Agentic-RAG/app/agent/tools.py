@@ -19,8 +19,19 @@ a tool is actually used and the vector store is missing.
 import re
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
-VECTOR_DB_PATH = "vector_store"
+# Resolve the vector store relative to the project root (not the cwd),
+# so the app works no matter which folder the server is started from.
+_BASE_DIR = Path(__file__).resolve().parents[2]
+_VECTOR_STORE_CANDIDATES = [
+    _BASE_DIR / "vector_store",
+    _BASE_DIR / "Agentic-RAG" / "vector_store",
+    Path("vector_store"),
+]
+VECTOR_DB_PATH = str(
+    next((p for p in _VECTOR_STORE_CANDIDATES if p.exists()), _VECTOR_STORE_CANDIDATES[0])
+)
 COLLECTION_NAME = "products"
 
 _model = None
@@ -103,6 +114,10 @@ STOPWORDS = {
     "compare", "vs", "versus", "difference", "between", "recommend",
     "suggest", "suggestion", "some", "any", "one", "that", "this", "there",
     "have", "has", "my", "machine", "washing",  # 'washing machine' handled below
+    "tell", "about", "know", "details", "detail", "info", "information",
+    "what", "whats", "which", "who", "when", "where", "why", "how", "much",
+    "many", "does", "did", "are", "was", "were", "will", "would", "could",
+    "should", "its", "specs", "spec", "specifications", "features", "feature",
 }
 
 _PRICE_MAX_RE = re.compile(
@@ -236,19 +251,40 @@ def _base_name(name: str) -> str:
     return name.split("(")[0].strip().lower()
 
 
-def search_products(query: str, limit: int = 5, dedupe_variants: bool = True):
+def get_variants(product: dict, parsed: dict | None = None):
+    """All variants (colors/storage) of the same model, cheapest first."""
+    base = _base_name(product["name"])
+    variants = [p for p in _get_catalog() if _base_name(p["name"]) == base]
+    if parsed:
+        variants = [p for p in variants if _passes_filters(p, parsed)] or variants
+    variants.sort(key=lambda p: (p.get("price") is None, p.get("price") or 0))
+    return variants
+
+
+def search_products_detailed(query: str, limit: int = 5) -> dict:
     """
-    Hybrid product search: exact keyword matches ranked first, then
-    semantic results; price/category constraints applied to both.
-    Returns a list of dicts with metadata + description.
+    Hybrid product search with query understanding.
+
+    Returns {"products": [...], "specific": bool}.
+
+    specific=True means the customer asked for one exact product
+    (all meaningful query words matched a product name) — in that case
+    `products` contains ONLY that model's variants, cheapest first,
+    instead of a list of alternatives.
     """
     parsed = parse_query(query)
 
     keyword_results = _keyword_search(parsed)
-    # strong keyword matches (most query words found in the product name)
     strong = [p for score, p in keyword_results if score >= 0.6]
+    perfect = [p for score, p in keyword_results if score == 1.0]
     weak = [p for score, p in keyword_results if 0.3 <= score < 0.6]
 
+    # ----- specific product request: return that product only -----
+    if perfect and len(parsed["keywords"]) >= 2:
+        variants = get_variants(perfect[0], parsed)
+        return {"products": variants[:limit], "specific": True}
+
+    # ----- broad request: merge keyword + semantic results -----
     try:
         semantic = _vector_search(query, parsed, n_results=max(20, limit * 4))
     except RuntimeError:
@@ -260,7 +296,7 @@ def search_products(query: str, limit: int = 5, dedupe_variants: bool = True):
 
     merged, seen = [], set()
     for product in strong + semantic + weak:
-        key = _base_name(product["name"]) if dedupe_variants else product["name"]
+        key = _base_name(product["name"])
         if key in seen:
             continue
         seen.add(key)
@@ -268,7 +304,15 @@ def search_products(query: str, limit: int = 5, dedupe_variants: bool = True):
         if len(merged) >= limit:
             break
 
-    return merged
+    return {"products": merged, "specific": False}
+
+
+def search_products(query: str, limit: int = 5):
+    """
+    Hybrid product search (backwards-compatible wrapper).
+    Returns a list of dicts with metadata + description.
+    """
+    return search_products_detailed(query, limit)["products"]
 
 
 # ---------------------------------------------------------------------------

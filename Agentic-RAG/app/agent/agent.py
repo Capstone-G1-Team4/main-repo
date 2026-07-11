@@ -20,7 +20,12 @@ from app.agent.memory import (
     update_session,
 )
 from app.agent.router import classify_intent
-from app.agent.tools import compare_products, create_order, search_products
+from app.agent.tools import (
+    compare_products,
+    create_order,
+    search_products,
+    search_products_detailed,
+)
 from app.rag.pipeline import rag_answer
 
 # Steps of the order flow state machine
@@ -73,11 +78,24 @@ def _handle_intent(intent: str, user_message: str, user_id: str, session: dict) 
     history = get_history_for_llm(user_id)
 
     if intent == "search":
-        products = search_products(user_message)
+        result = search_products_detailed(user_message)
+        products = result["products"]
         if not products:
             return "I couldn't find any matching products. Could you describe what you're looking for differently?"
         update_session(user_id, "last_products", products)
         context = "\n\n".join(p["description"] for p in products)
+
+        if result["specific"]:
+            # the customer asked for ONE exact product -> present it alone
+            question = (
+                "The customer asked about this specific product. Present ONLY "
+                "this product: its price, rating and key specs. If several "
+                "variants (color/storage) are in the context, list them with "
+                "their prices. Do NOT suggest other products.\n\n"
+                f"Customer message: {user_message}"
+            )
+            return rag_answer(question, context=context, history=history)
+
         return rag_answer(user_message, context=context, history=history)
 
     if intent == "compare":
@@ -103,11 +121,34 @@ Customer message: {user_message}"""
 
 def _answer_product_question(user_message: str, user_id: str, session: dict, history: list) -> str:
     """
-    Free-form Q&A about products. Combines:
-    - the currently selected product (if in/after an order),
-    - the products from the last search (what the customer is looking at),
-    - a fresh retrieval for the question itself.
+    Free-form Q&A about products.
+
+    If the question names a specific product ("does the iphone 12 mini
+    have 5G?"), the context contains ONLY that product — this prevents
+    wrong answers caused by mixing in unrelated products. Otherwise the
+    context combines the selected product, the last search results, and
+    a fresh retrieval.
     """
+    focused = (
+        "Answer the customer's question using ONLY the product information "
+        "provided. If the context contains several products, answer about "
+        "the one the customer is asking about. If the information needed "
+        "is not in the context, say so honestly.\n\n"
+        f"Customer question: {user_message}"
+    )
+
+    # 1) question about one specific, named product -> focused context
+    try:
+        result = search_products_detailed(user_message, limit=4)
+        if result["specific"]:
+            update_session(user_id, "last_products", result["products"])
+            context = "\n\n".join(p["description"] for p in result["products"])
+            return rag_answer(focused, context=context, history=history)
+        fresh = result["products"][:3]
+    except RuntimeError:
+        fresh = []  # vector store missing but we may still have session products
+
+    # 2) otherwise: selected product + last shown products + fresh retrieval
     context_products = []
 
     if session.get("selected_product"):
@@ -117,12 +158,9 @@ def _answer_product_question(user_message: str, user_id: str, session: dict, his
         if p not in context_products:
             context_products.append(p)
 
-    try:
-        for p in search_products(user_message, limit=3):
-            if p["name"] not in [c.get("name") for c in context_products]:
-                context_products.append(p)
-    except RuntimeError:
-        pass  # vector store missing but we may still have session products
+    for p in fresh:
+        if p["name"] not in [c.get("name") for c in context_products]:
+            context_products.append(p)
 
     if not context_products:
         return (
@@ -131,7 +169,7 @@ def _answer_product_question(user_message: str, user_id: str, session: dict, his
         )
 
     context = "\n\n".join(p.get("description", "") for p in context_products[:6])
-    return rag_answer(user_message, context=context, history=history)
+    return rag_answer(focused, context=context, history=history)
 
 
 # ---------------------------------------------------------------------------

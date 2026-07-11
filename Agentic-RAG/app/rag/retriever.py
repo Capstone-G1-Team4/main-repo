@@ -3,7 +3,15 @@ RAG retriever: semantic search over the product vector store.
 Model and collection are loaded lazily (no crash on import).
 """
 
-VECTOR_DB_PATH = "vector_store"
+from pathlib import Path
+
+_BASE_DIR = Path(__file__).resolve().parents[2]
+_CANDIDATES = [
+    _BASE_DIR / "vector_store",
+    _BASE_DIR / "Agentic-RAG" / "vector_store",
+    Path("vector_store"),
+]
+VECTOR_DB_PATH = str(next((p for p in _CANDIDATES if p.exists()), _CANDIDATES[0]))
 COLLECTION_NAME = "products"
 
 _model = None

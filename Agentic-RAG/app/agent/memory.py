@@ -11,8 +11,12 @@ import json
 import os
 import sqlite3
 from datetime import datetime, timezone
+from pathlib import Path
 
-DB_DIR = os.getenv("AGENT_DB_DIR", "data")
+# Store the DB relative to the project root (not the cwd), so sessions
+# are found no matter which folder the server is started from.
+_BASE_DIR = Path(__file__).resolve().parents[2]
+DB_DIR = os.getenv("AGENT_DB_DIR", str(_BASE_DIR / "data"))
 DB_PATH = os.path.join(DB_DIR, "agent_memory.db")
 
 # JSON-encoded session fields
