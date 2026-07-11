@@ -1,28 +1,25 @@
-from app.agent.agent import shopping_agent, order_flow
-from app.agent.tools import search_products, compare_products
-from app.agent.memory import memory_store, get_session
+"""
+Final end-to-end test: search -> question -> compare -> order -> memory check.
+"""
 
-# User ID افتراضي
+from app.agent.agent import shopping_agent
+from app.agent.memory import get_history, get_session
+
 user_id = "test_final"
 
-# مثال 1: SEARCH
 print("----- SEARCH -----")
-search_result = shopping_agent("I need a Samsung phone under 40000 with good battery")
-print(search_result)
+print(shopping_agent("I need a Samsung phone under 40000 with good battery", user_id)["response"])
 
-# مثال 2: COMPARE
 print("\n----- COMPARE -----")
-compare_result = shopping_agent("Compare Samsung A13 and Samsung F42")
-print(compare_result)
+print(shopping_agent("Compare Samsung A13 and Samsung F42", user_id)["response"])
 
-# مثال 3: Order Flow تفاعلي
-print("\n----- ORDER FLOW -----")
-products = search_products("Samsung phone under 40000 with good battery")
-selected_product = products[0]
+print("\n----- ORDER FLOW (conversational) -----")
+for message in ["I want to buy Samsung A13", "yes", "Shahd", "079xxxxxxx", "Amman, Jordan", "yes"]:
+    result = shopping_agent(message, user_id=user_id)
+    print(f"\nUSER: {message}")
+    print(f"AGENT: {result['response']}")
 
-order_result = order_flow(selected_product, user_id=user_id)
-
-# Memory تحقق
 print("\n----- MEMORY CHECK -----")
-session_data = get_session(user_id)
-print(session_data)
+session = get_session(user_id)
+print("Orders placed:", session["orders"])
+print("Messages stored:", len(get_history(user_id, limit=1000)))

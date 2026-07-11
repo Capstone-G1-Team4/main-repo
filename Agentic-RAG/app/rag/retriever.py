@@ -1,73 +1,63 @@
-import chromadb
-from pathlib import Path
-from sentence_transformers import SentenceTransformer
+"""
+RAG retriever: semantic search over the product vector store.
+Model and collection are loaded lazily (no crash on import).
+"""
+
+VECTOR_DB_PATH = "vector_store"
+COLLECTION_NAME = "products"
+
+_model = None
+_collection = None
 
 
+def _get_collection():
+    global _model, _collection
 
-VECTOR_DB_PATH = Path("vector_store")
+    if _collection is not None:
+        return _model, _collection
 
+    import chromadb
+    from sentence_transformers import SentenceTransformer
 
+    # Same model used during embedding creation
+    _model = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Same model used during embedding creation
+    client = chromadb.PersistentClient(path=VECTOR_DB_PATH)
+    try:
+        _collection = client.get_collection(name=COLLECTION_NAME)
+    except Exception as e:
+        raise RuntimeError(
+            "Product vector store not found. Build it first:\n"
+            "  1) python app/rag/data_loader.py\n"
+            "  2) python app/rag/embeddings.py"
+        ) from e
 
-model = SentenceTransformer(
-    "all-MiniLM-L6-v2"
-)
-
-
-
-client = chromadb.PersistentClient(
-    path=str(VECTOR_DB_PATH)
-)
-
-
-
-collection = client.get_collection(
-    name="products"
-)
-
-
+    return _model, _collection
 
 
 def retrieve_products(query: str, k: int = 5):
+    """Return the k most relevant products for the query."""
+    model, collection = _get_collection()
 
-
-    # Convert user query to vector
-
-    query_embedding = model.encode(
-        query
-    )
-
+    query_embedding = model.encode(query)
 
     results = collection.query(
-        query_embeddings=[
-            query_embedding.tolist()
-        ],
-        n_results=k
+        query_embeddings=[query_embedding.tolist()],
+        n_results=k,
     )
 
-
-
     products = []
+    documents = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+    distances = results.get("distances", [[]])[0]
 
-
-
-    for i in range(
-        len(results["documents"][0])
-    ):
-
-
+    for i in range(len(documents)):
         products.append(
-
             {
-                "content": results["documents"][0][i],
-
-                "metadata": results["metadatas"][0][i],
-
-                "distance": results["distances"][0][i]
+                "content": documents[i],
+                "metadata": metadatas[i],
+                "distance": distances[i] if i < len(distances) else None,
             }
-
         )
-
 
     return products

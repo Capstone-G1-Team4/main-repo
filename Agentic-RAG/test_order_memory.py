@@ -1,20 +1,22 @@
-from app.agent.tools import search_products
-from app.agent.agent import order_flow
-from app.agent.memory import memory_store, get_session
+"""
+Test that the order flow state and chat history persist in SQLite.
+"""
 
-# ابحث عن أي جهاز
-products = search_products("Samsung phone under 40000 with good battery")
+from app.agent.agent import shopping_agent
+from app.agent.memory import get_history, get_session
 
-# اختر أول منتج
-selected_product = products[0]
+user_id = "test_user_memory"
 
-# نفترض user_id للمستخدم الحالي
-user_id = "test_user"
+# simulate an order conversation, one message at a time
+for message in ["I want to buy a Samsung phone", "yes", "Shahd", "079xxxxxxx", "Amman, Jordan", "yes"]:
+    result = shopping_agent(message, user_id=user_id)
+    print(f"\nUSER: {message}")
+    print(f"AGENT: {result['response']}")
 
-# شغل Order Flow مع Memory
-order_flow(selected_product, user_id=user_id)
+# verify persistence
+print("\n----- SESSION (from SQLite) -----")
+print(get_session(user_id))
 
-# تحقق من أن كل البيانات خزنت في memory_store
-session_data = get_session(user_id)
-print("\nMemory Store for user:", user_id)
-print(session_data)
+print("\n----- HISTORY (from SQLite) -----")
+for m in get_history(user_id):
+    print(f"[{m['role']}] {m['content'][:80]}")
