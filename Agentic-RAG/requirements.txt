@@ -19,3 +19,6 @@ numpy
 
 beautifulsoup4
 requests
+
+prometheus-fastapi-instrumentator>=6.1
+python-json-logger>=2.0

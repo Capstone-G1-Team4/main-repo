@@ -12,9 +12,14 @@ Run:  uvicorn app.main:app --reload
 Docs: http://localhost:8000/docs
 """
 
+import logging
+from pythonjsonlogger import jsonlogger
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from prometheus_fastapi_instrumentator import Instrumentator, metrics
+from prometheus_client import Counter, Gauge
 
 from app.agent.agent import shopping_agent
 from app.agent.memory import (
@@ -23,6 +28,16 @@ from app.agent.memory import (
     get_session,
     list_sessions,
 )
+
+# Set up JSON-line logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+json_formatter = jsonlogger.JsonFormatter(
+    "%(asctime)s %(levelname)s %(name)s %(message)s %(module)s %(funcName)s %(lineno)d"
+)
+handler.setFormatter(json_formatter)
+logger.addHandler(handler)
 
 app = FastAPI(
     title="Agentic RAG Shopping Assistant",
@@ -38,6 +53,32 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Prometheus integration
+Instrumentator().add(
+    metrics.request_size()
+).add(
+    metrics.response_size()
+).add(
+    metrics.latency()
+).add(
+    metrics.requests()
+).instrument(app).expose(app)
+
+# Custom metrics
+chat_request_counter = Counter(
+    "chat_request_total",
+    "Total number of chat requests",
+    ["intent"]
+)
+rag_retrieval_accuracy = Gauge(
+    "rag_retrieval_accuracy",
+    "Accuracy of RAG product retrievals (simulated)"
+)
+active_sessions_gauge = Gauge(
+    "active_sessions",
+    "Number of active chat sessions"
 )
 
 
@@ -58,10 +99,20 @@ def home():
     return {"message": "AI Service is running", "docs": "/docs"}
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
     """Send one user message to the agent and get its reply."""
     result = shopping_agent(request.message, user_id=request.session_id)
+    chat_request_counter.labels(intent=result["intent"]).inc()
+    # Update active sessions
+    active_sessions_gauge.set(len(list_sessions()))
+    # Simulate some retrieval accuracy for demonstration
+    rag_retrieval_accuracy.set(0.85)
     return ChatResponse(
         session_id=request.session_id,
         response=result["response"],
@@ -89,6 +140,7 @@ def session_orders(session_id: str):
 def delete_chat(session_id: str):
     """Delete a session and its whole history (e.g. 'clear chat' button)."""
     clear_session(session_id)
+    active_sessions_gauge.set(len(list_sessions()))
     return {"session_id": session_id, "deleted": True}
 
 
