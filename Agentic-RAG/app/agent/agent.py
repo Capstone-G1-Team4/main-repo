@@ -55,7 +55,11 @@ def shopping_agent(user_message: str, user_id: str = "default_user") -> dict:
         response = f"Sorry, I ran into a setup problem: {e}"
     except Exception as e:
         intent = "error"
-        response = f"Sorry, something went wrong while processing your request. ({e})"
+        error_msg = str(e)
+        if "429" in error_msg or "rate limit" in error_msg.lower():
+            response = "Sorry, I'm currently receiving too many requests. Please try again in a few minutes."
+        else:
+            response = f"Sorry, something went wrong while processing your request. ({e})"
 
     # persist the exchange AFTER handling, so the LLM history passed
     # during handling contains only previous turns.

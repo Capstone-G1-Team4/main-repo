@@ -157,11 +157,14 @@ export default function ChatWindow({ onAddToCart, onSendMessage, initialMessages
         content: reply,
       });
 
-      const recommended = findMatchingProducts(userText);
-      if (recommended && recommended.length > 0) {
-        await wait(300);
-        const recMsg = buildProductRecommendation(recommended);
-        if (recMsg) appendMessage(recMsg);
+      const isError = reply.includes("Sorry, something went wrong") || reply.includes("Sorry, I'm currently receiving too many requests") || reply.includes("Error code:");
+      if (!isError) {
+        const recommended = findMatchingProducts(userText);
+        if (recommended && recommended.length > 0) {
+          await wait(300);
+          const recMsg = buildProductRecommendation(recommended);
+          if (recMsg) appendMessage(recMsg);
+        }
       }
     } catch (error) {
       console.error("AI response failed:", error);
